@@ -1,0 +1,18 @@
+{
+  "analyzers": {
+    "core": {
+      "rules": {
+        // Allow AVM cross-resource patterns where a sub-resource scope is declared
+        // alongside an `existing` parent — common in our wiring.bicep.
+        "use-parent-property": {
+          "level": "warning"
+        },
+        // We intentionally suppress AVM telemetry secret-pin warnings; AVM's own
+        // modules sometimes flag user-input-as-secret false positives.
+        "secure-parameter-default": {
+          "level": "warning"
+        }
+      }
+    }
+  }
+}

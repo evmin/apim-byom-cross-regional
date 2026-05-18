@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+#
+# azd project manifest for `001-private-foundry-iac`.
+#
+# This is an Infrastructure-as-Code feature only — there is no application
+# being built or deployed by azd. Therefore the `services:` block is
+# deliberately absent (an empty `services` block is invalid). All resource
+# provisioning happens via `infra/main.bicep`.
+#
+# Hooks:
+#   - postprovision: hooks/postprovision-audit.sh   (T-036; runs unconditionally)
+#                    hooks/postprovision-smoke.sh   (T-037; gated on ENABLE_SMOKE_VALIDATION)
+#   - The Foundry "Azure API Management" admin-connected model is authored
+#     in Bicep (T-031); the postprovision-connection.sh + predown-connection.sh
+#     hook templates exist as INERT `.template` files under hooks/ and are
+#     only enabled by the operator if T-031 fails at deploy time (T-032).
+
+name: private-foundry-iac
+
+metadata:
+  template: private-foundry-iac@0.1.0
+
+# Subscription-scoped deployment driven by infra/main.bicep + infra/main.bicepparam.
+infra:
+  provider: bicep
+  path: infra
+  module: main
+
+# Lifecycle hooks — best-effort posture audit and optional smoke inference call.
+# All hooks are bash on macOS/Linux and PowerShell on Windows (the .ps1 sibling is
+# left to a future task — current scripts run on POSIX shells, including the GHA
+# `ubuntu-latest` runner most operators will use).
+hooks:
+  postprovision:
+    posix:
+      shell: sh
+      run: ./hooks/postprovision-finalize.sh && ./hooks/postprovision-audit.sh && ./hooks/postprovision-smoke.sh
+      continueOnError: false
+      interactive: false
+
+  # Predown audit — runs before `azd down`. Currently a placeholder; the teardown
+  # verification (T-038) is exercised as a sidecar script the operator runs after
+  # `azd down` completes, not as a predown hook (the resources still exist at
+  # predown time, which would make the audit always fail).
+  # predown:
+  #   posix:
+  #     shell: sh
+  #     run: ./hooks/predown-noop.sh
+  #     continueOnError: true
+  #     interactive: false
+
+# --- T-032 fallback: documented but DISABLED by default. ---
+# If T-031 (Bicep-native Foundry admin-connected model) fails at deploy time,
+# uncomment the block below AND rename the two `.template` script files in
+# hooks/ to drop the `.template` suffix.
+#
+# hooks:
+#   postprovision:
+#     posix:
+#       shell: sh
+#       run: ./hooks/postprovision-audit.sh && ./hooks/postprovision-connection.sh && ./hooks/postprovision-smoke.sh
+#   predown:
+#     posix:
+#       shell: sh
+#       run: ./hooks/predown-connection.sh

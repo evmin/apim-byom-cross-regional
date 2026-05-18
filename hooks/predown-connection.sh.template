@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# =============================================================================
+# hooks/predown-connection.sh.template — T-032 FALLBACK predown (inert).
+# =============================================================================
+#
+# Mirror of postprovision-connection.sh.template. Runs as an `azd predown` hook
+# when the T-032 fallback is enabled; deletes the Foundry connection BEFORE
+# `azd down` tears down the projects/account (clean teardown — FR-002).
+#
+# Only enable in lockstep with hooks/postprovision-connection.sh (see that
+# script's header for the activation procedure).
+# =============================================================================
+
+set -euo pipefail
+
+: "${AGENT_RG:?missing AGENT_RG}"
+: "${WE_FOUNDRY_ACCOUNT_NAME:?missing WE_FOUNDRY_ACCOUNT_NAME}"
+: "${WE_FOUNDRY_PROJECT_NAME:?missing WE_FOUNDRY_PROJECT_NAME}"
+
+SUB_ID=$(az account show --query id -o tsv)
+URL="https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${AGENT_RG}/providers/Microsoft.CognitiveServices/accounts/${WE_FOUNDRY_ACCOUNT_NAME}/projects/${WE_FOUNDRY_PROJECT_NAME}/connections/apim-byom?api-version=2025-06-01"
+
+echo "T-032 fallback predown: DELETE ${URL}"
+# Ignore 404 — predown should be idempotent (the connection may already be gone
+# from a previous partial teardown).
+az rest --method delete --url "${URL}" --only-show-errors >/dev/null 2>&1 || true
+
+echo "T-032 fallback predown: connection apim-byom deleted (or already absent)"

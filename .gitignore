@@ -1,0 +1,23 @@
+# azd environment state (per-deployment local; never committed).
+.azure/
+
+# Bicep registry cache (created in-tree by `az bicep build` for module restores).
+.bicep/
+
+# Bicep transpilation products — we author Bicep, not ARM JSON.
+infra/**/*.json.tmp
+infra/main.json
+infra/modules/*.json
+
+# macOS / editor noise.
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/*.log
+
+# Local scratch
+*.tmp
+*.log
+
+# Temp
+.build/

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# =============================================================================
+# hooks/postprovision-connection.sh.template — T-032 FALLBACK (inert by default).
+# =============================================================================
+#
+# *** DO NOT ENABLE THIS HOOK UNLESS T-031 (Bicep-native Foundry connection
+# authoring in infra/modules/foundry-connection.bicep) FAILS AT DEPLOY TIME. ***
+#
+# T-031's acceptance is that the connection is authored declaratively in Bicep
+# as `Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01`. If
+# that resource type stops being accepted by the control plane (e.g. Foundry
+# rejects the chosen `properties.category` value across all three fallbacks),
+# re-open T-032 and enable this hook by:
+#
+#   1. Renaming hooks/postprovision-connection.sh.template
+#      -> hooks/postprovision-connection.sh   (chmod +x)
+#   2. Renaming hooks/predown-connection.sh.template
+#      -> hooks/predown-connection.sh         (chmod +x)
+#   3. Uncomment the matching hook entries in azure.yaml.
+#   4. Comment out the foundryConnection module dispatch in infra/modules/wiring.bicep.
+#
+# Both this script and its predown counterpart MUST be idempotent: this script
+# uses `az rest --method PUT` with `If-Match: *` semantics so a re-run replaces
+# any existing connection without error.
+# =============================================================================
+
+set -euo pipefail
+
+# All values sourced from `azd env get-values` (azd populates the env automatically
+# when invoking postprovision hooks).
+: "${AGENT_RG:?missing AGENT_RG}"
+: "${WE_FOUNDRY_ACCOUNT_NAME:?missing WE_FOUNDRY_ACCOUNT_NAME}"
+: "${WE_FOUNDRY_PROJECT_NAME:?missing WE_FOUNDRY_PROJECT_NAME}"
+: "${APIM_GATEWAY_HOSTNAME:?missing APIM_GATEWAY_HOSTNAME}"
+: "${APIM_SERVICE_ID:?missing APIM_SERVICE_ID}"
+
+SUB_ID=$(az account show --query id -o tsv)
+URL="https://management.azure.com/subscriptions/${SUB_ID}/resourceGroups/${AGENT_RG}/providers/Microsoft.CognitiveServices/accounts/${WE_FOUNDRY_ACCOUNT_NAME}/projects/${WE_FOUNDRY_PROJECT_NAME}/connections/apim-byom?api-version=2025-06-01"
+
+BODY=$(cat <<JSON
+{
+  "properties": {
+    "category": "ApiManagement",
+    "target": "https://${APIM_GATEWAY_HOSTNAME}/openai",
+    "authType": "AAD",
+    "isSharedToAll": true,
+    "metadata": {
+      "ApiType": "Azure",
+      "ResourceId": "${APIM_SERVICE_ID}",
+      "UrlPathStyle": "aoai"
+    }
+  }
+}
+JSON
+)
+
+echo "T-032 fallback: PUT ${URL}"
+az rest --method put \
+  --url "${URL}" \
+  --headers "If-Match=*" \
+  --body "${BODY}" >/dev/null
+
+echo "T-032 fallback: connection apim-byom authored via az rest"

@@ -1,0 +1,86 @@
+<!--
+  APIM inbound policy stack — always-on elements.
+
+  Composed at deploy time by infra/modules/apim-policy.bicep:
+    - validate-azure-ad-token   (AAD bearer verification — accepts a list of
+                                 trusted oids; audience is multi-valued because
+                                 callers may sign tokens for either the Foundry
+                                 v1 audience or the AOAI audience)
+    - (optional) llm-semantic-cache-lookup — inserted from inbound-cache.xml when
+      enableSemanticCache = true; intentionally NOT present in this file
+    - set-backend-service        (rewrites the backend to the SC Foundry / AOAI account
+                                  via its private hostname)
+    - authentication-managed-identity (acquires APIM's MI token for AOAI and
+      overwrites the caller's Authorization header on the forward request)
+
+  Placeholder tokens replaced via Bicep `replace()` in apim-policy.bicep:
+    {{TENANT_ID}}        -> tenant().tenantId
+    {{ALLOWED_OIDS_XML}} -> one <value>...</value> per trusted oid (project MI,
+                            and optionally the jumpbox UAMI for the demo-only
+                            cross-region inference smoke).
+    {{BACKEND_URL}}      -> 'https://${scFoundryAccount.properties.endpoint}/openai'
+                            (private hostname via DNS zone C-Z1)
+    {{BACKEND_AUDIENCE}} -> 'https://cognitiveservices.azure.com'
+
+  NOTE: the `<llm-token-limit>` element that previously sat between
+  validate-azure-ad-token and set-backend-service was removed. With
+  counter-key = the raw `Authorization` header, the policy's hash bucket
+  ballooned on every request and the runtime intermittently dropped the
+  response body (200 OK with Content-Length: 0). The architecture spec does
+  not mandate a token cap; if needed, re-add later with a stable counter-key
+  (e.g. `@(context.Request.Headers.GetValueOrDefault("Authorization","").
+  Split(' ')[1])` truncated to a fingerprint).
+
+  The XML below is wrapped in a synthetic <fragment> root so that `xmllint`
+  validates it as a single-rooted XML document. At composition time, the
+  Bicep strips the <fragment>...</fragment> markers and inserts the inner
+  elements inside the <inbound> element of the assembled policy document.
+-->
+<fragment>
+    <!-- 1. AAD bearer verification — every request MUST carry a trusted-MI-issued token.
+             - audiences:
+                 * https://cognitiveservices.azure.com/  — what AOAI / `<acct>.openai.azure.com`
+                   data-plane SDK clients sign for.
+                 * https://ai.azure.com                  — what Foundry v1 / AIProjectClient
+                   SDK clients sign for (audience differs by data-plane).
+             - oids:
+                 * Agent project system-assigned MI (always present — this is the
+                   principal the Foundry agents runtime signs upstream calls with).
+                 * Optional: jumpbox UAMI (present in fdev/demo envs only — lets
+                   the operator exercise the cross-region inference bridge from
+                   inside the agent VNet without spinning up an agent run). -->
+    <validate-azure-ad-token
+        tenant-id="{{TENANT_ID}}"
+        header-name="Authorization"
+        failed-validation-httpcode="401"
+        failed-validation-error-message="Invalid or missing AAD bearer.">
+        <audiences>
+            <audience>https://cognitiveservices.azure.com/</audience>
+            <audience>https://ai.azure.com</audience>
+        </audiences>
+        <required-claims>
+            <claim name="oid" match="any">{{ALLOWED_OIDS_XML}}</claim>
+        </required-claims>
+    </validate-azure-ad-token>
+
+    <!-- 2. Backend rewrite to the SC Foundry / AOAI account. The hostname is the
+         private-link hostname resolved via SC DNS zone C-Z1 from inside APIM's
+         outbound VNet integration (C-N2). The trailing `/openai` is the AOAI
+         data-plane path prefix; combined with APIM's `path: openai` strip on
+         the openai API, the composed URL is
+         `https://<acct>.openai.azure.com/openai/deployments/<name>/...`. -->
+    <set-backend-service base-url="{{BACKEND_URL}}" />
+
+    <!-- 3. Acquire APIM's system-assigned MI token for AOAI and overwrite the caller's
+         Authorization header on the forward request. The `output-token-variable-name`
+         + explicit `set-header` form is more robust than the implicit header
+         injection mode in APIM v2 — without it, some StandardV2 instances return
+         200 with an empty body. -->
+    <authentication-managed-identity
+        resource="{{BACKEND_AUDIENCE}}"
+        output-token-variable-name="msi-token"
+        ignore-error="false" />
+    <set-header name="Authorization" exists-action="override">
+        <value>@("Bearer " + (string)context.Variables["msi-token"])</value>
+    </set-header>
+</fragment>

@@ -1,0 +1,249 @@
+// =============================================================================
+// wiring.bicep — cross-region wiring (subscription-scope).
+// =============================================================================
+//
+// Cross-region wiring authored AFTER both regional planes provision:
+//   - X-3: APIM MI -> Cognitive Services OpenAI User on SC Foundry account (T-029)
+//   - X-4 (control plane): WE project MI -> Cosmos / AI Search / Storage (T-030)
+//   - X-4 (data plane):    Cosmos DB Built-in Data Contributor (T-030a, native)
+//   - X-5: Foundry admin-connected model (T-031, native)
+//
+// AVM gap (R-A2): the AVM rg-scope role-assignment module at pin 0.1.1 has a
+// minimal params surface ({name, condition, conditionVersion, ...}) that does
+// NOT accept principalId/roleDefinitionIdOrName/resourceId. We dispatch
+// RG-scoped native helper modules (rbac-model-rg.bicep, rbac-agent-rg.bicep)
+// instead. Retire those helpers when AVM ships full coverage on a future
+// `resource-scope` role-assignment module.
+//
+// NATIVE FALLBACKS (with inline justifications — T-040):
+//   - Microsoft.Authorization/roleAssignments@2022-04-01 (T-029, T-030 — R-A2)
+//   - Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15 (T-030a)
+//   - Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01 (T-031)
+// =============================================================================
+
+targetScope = 'subscription'
+
+// =============================================================================
+// Parameters
+// =============================================================================
+
+@description('Agent regional resource group name (passed in from main.bicep).')
+param agentRgName string
+
+@description('Model regional resource group name (passed in from main.bicep).')
+param modelRgName string
+
+@description('Agent region (for connection metadata).')
+param agentRegion string
+
+@description('APIM service resource ID (in modelRg).')
+param apimServiceId string
+
+@description('APIM system-assigned MI principal ID.')
+param apimPrincipalId string
+
+@description('SC Foundry account name.')
+param scFoundryAccountName string
+
+@description('WE Foundry account name.')
+param weFoundryAccountName string
+
+@description('WE Foundry project name (e.g., "agent-project").')
+param weFoundryProjectName string
+
+@description('WE Foundry project system-assigned MI principal ID.')
+param weFoundryProjectPrincipalId string
+
+@description('Agent subnet resource ID. MUST match `networkInjections[0].subnetArmId` on the Foundry account.')
+param agentSubnetId string
+
+@description('WE Cosmos DB account name.')
+param weCosmosAccountName string
+
+@description('WE AI Search service name.')
+param weSearchServiceName string
+
+@description('WE Storage account name.')
+param weStorageAccountName string
+
+@description('APIM private gateway hostname for the Foundry connection target.')
+param apimGatewayHostname string
+
+@description('Model deployment names — surfaced in the Foundry connection metadata for static discovery.')
+param modelDeploymentNames array
+
+@description('URL-path style for the Foundry connection metadata.')
+@allowed([
+  'aoai'
+  'openai'
+])
+param urlPathStyle string
+
+@description('When true, the Foundry connection uses dynamic discovery (APIM serves /deployments or /models).')
+param enableDynamicDiscovery bool
+
+// =============================================================================
+// Built-in role definition GUIDs
+// =============================================================================
+
+// CRITICAL (T-029): the ONLY correct role for APIM's authentication-managed-identity
+// policy to authenticate against a Foundry/AOAI account is the *Cognitive Services
+// OpenAI User* role. Using `Cognitive Services User` instead would cause every
+// backend hop to return 401/403 — data-model.md X-3 explicitly forbids it.
+var roleCognitiveServicesOpenAIUser = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+// DO NOT USE: 'a97b65f3-24c7-4388-baec-2e87135dc908' (Cognitive Services User; wrong role).
+
+// Cosmos data-plane role definition (NOT a Microsoft.Authorization role — this is
+// a Cosmos-specific SQL role definition under .../databaseAccounts/sqlRoleDefinitions).
+var cosmosBuiltinDataContributorRoleDefId = '00000000-0000-0000-0000-000000000002'
+
+// =============================================================================
+// X-3 — APIM MI -> Cognitive Services OpenAI User on SC Foundry account (T-029)
+// =============================================================================
+
+module rbacModelRg 'rbac-model-rg.bicep' = {
+  name: 'rbac-model-rg'
+  scope: resourceGroup(modelRgName)
+  params: {
+    scFoundryAccountName: scFoundryAccountName
+    apimPrincipalId: apimPrincipalId
+    roleCognitiveServicesOpenAIUser: roleCognitiveServicesOpenAIUser
+  }
+}
+
+// =============================================================================
+// X-4 control plane — WE project MI -> Cosmos / Search / Storage (T-030)
+// =============================================================================
+
+module rbacAgentRg 'rbac-agent-rg.bicep' = {
+  name: 'rbac-agent-rg'
+  scope: resourceGroup(agentRgName)
+  params: {
+    weFoundryProjectPrincipalId: weFoundryProjectPrincipalId
+    weCosmosAccountName: weCosmosAccountName
+    weSearchServiceName: weSearchServiceName
+    weStorageAccountName: weStorageAccountName
+  }
+}
+
+// =============================================================================
+// X-4 data plane — Cosmos DB SQL role assignment (T-030a)
+// =============================================================================
+//
+// AVM gap: `document-db/database-account@0.19.0` does not author data-plane SQL
+// role assignments. Native fallback per research R-01 / R-A1; cross-referenced
+// from data-model.md X-4. Retire when AVM ships `sqlRoleAssignments[]` coverage
+// (target: avm/res/document-db/database-account >= 0.20.x with sqlRoleAssignments[]).
+// =============================================================================
+
+module cosmosDataPlaneRole 'cosmos-sql-role-assignment.bicep' = {
+  name: 'ra-project-cosmos-data-plane'
+  scope: resourceGroup(agentRgName)
+  params: {
+    cosmosAccountName: weCosmosAccountName
+    principalId: weFoundryProjectPrincipalId
+    roleDefinitionId: cosmosBuiltinDataContributorRoleDefId
+  }
+}
+
+// =============================================================================
+// X-5 — Foundry admin-connected model on the WE project (T-031)
+// =============================================================================
+//
+// AVM gap: AVM `cognitive-services/account@0.14.2` does not author
+// `accounts/projects/connections` children. Native fallback per research
+// R-01 / R-06 / R-A1. Retire when AVM ships first-class connections coverage.
+//
+// The connection must be authored AFTER:
+//   - the WE project exists (T-014),
+//   - the APIM service exists (T-026),
+//   - the APIM MI has the OpenAI User role on the SC Foundry account (T-029),
+//   - the cross-region inbound PE exists (T-020),
+//   - the W-Z7 DNS zone is linked to the WE VNet (T-012).
+//
+// The Foundry portal "Connected Resources" view lists this connection with
+// `properties.category = 'ApiManagement'`. If Foundry rejects 'ApiManagement'
+// at deploy time, change to 'ModelGateway' (documented second-choice fallback)
+// per R-A1 and record the working value in an inline comment.
+// =============================================================================
+
+module foundryConnection 'foundry-connection.bicep' = {
+  name: 'foundry-connection-apim'
+  scope: resourceGroup(agentRgName)
+  params: {
+    weFoundryAccountName: weFoundryAccountName
+    weFoundryProjectName: weFoundryProjectName
+    connectionName: 'apim-byom'
+    apimGatewayHostname: apimGatewayHostname
+    apimServiceId: apimServiceId
+    modelDeploymentNames: modelDeploymentNames
+    urlPathStyle: urlPathStyle
+    enableDynamicDiscovery: enableDynamicDiscovery
+  }
+  dependsOn: [
+    rbacModelRg  // role must exist before the connection is exercised
+  ]
+}
+
+// =============================================================================
+// Foundry standard-agent-setup wiring (T-031b/T-031c)
+// =============================================================================
+//
+// Three BYO data-plane connections + two capability hosts that together unlock
+// the agent runtime. Authored AFTER the apim-byom connection so all four
+// connection arrays on the project caphost reference live resources.
+//
+// AVM gap: see foundry-data-connections.bicep and foundry-caphosts.bicep.
+// Retire when AVM ships full first-class coverage for projects/connections and
+// accounts/capabilityHosts.
+// =============================================================================
+
+module foundryDataConnections 'foundry-data-connections.bicep' = {
+  name: 'foundry-data-connections'
+  scope: resourceGroup(agentRgName)
+  params: {
+    weFoundryAccountName: weFoundryAccountName
+    weFoundryProjectName: weFoundryProjectName
+    cosmosAccountName: weCosmosAccountName
+    storageAccountName: weStorageAccountName
+    searchServiceName: weSearchServiceName
+    agentRegion: agentRegion
+  }
+  dependsOn: [
+    foundryConnection  // apim-byom must exist first so projcaphost.aiServicesConnections resolves
+  ]
+}
+
+module foundryCaphosts 'foundry-caphosts.bicep' = {
+  name: 'foundry-caphosts'
+  scope: resourceGroup(agentRgName)
+  params: {
+    weFoundryAccountName: weFoundryAccountName
+    weFoundryProjectName: weFoundryProjectName
+    agentSubnetId: agentSubnetId
+    apimConnectionName: foundryConnection.outputs.connectionName
+    cosmosConnectionName: foundryDataConnections.outputs.cosmosConnectionName
+    storageConnectionName: foundryDataConnections.outputs.storageConnectionName
+    searchConnectionName: foundryDataConnections.outputs.searchConnectionName
+  }
+  dependsOn: [
+    rbacAgentRg              // standard-setup RBAC on BYO services
+    cosmosDataPlaneRole      // Cosmos SQL data-plane role for the runtime
+  ]
+}
+
+// =============================================================================
+// Outputs
+// =============================================================================
+
+output apimOpenAiUserRoleAssignmentId string = rbacModelRg.outputs.roleAssignmentId
+output cosmosControlRoleAssignmentId string = rbacAgentRg.outputs.cosmosControlRoleAssignmentId
+output searchIndexRoleAssignmentId string = rbacAgentRg.outputs.searchIndexRoleAssignmentId
+output searchServiceRoleAssignmentId string = rbacAgentRg.outputs.searchServiceRoleAssignmentId
+output storageBlobRoleAssignmentId string = rbacAgentRg.outputs.storageBlobRoleAssignmentId
+output foundryConnectionName string = foundryConnection.outputs.connectionName
+output cosmosConnectionName string = foundryDataConnections.outputs.cosmosConnectionName
+output storageConnectionName string = foundryDataConnections.outputs.storageConnectionName
+output searchConnectionName string = foundryDataConnections.outputs.searchConnectionName
+output accountCapabilityHostId string = foundryCaphosts.outputs.accountCapabilityHostId
+output projectCapabilityHostId string = foundryCaphosts.outputs.projectCapabilityHostId

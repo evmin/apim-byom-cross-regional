@@ -1,0 +1,19 @@
+<!--
+  Optional inbound semantic-cache lookup fragment.
+  Composed into the inbound stack by infra/modules/sc-model-plane.bicep (T-027)
+  ONLY when parameter `enableSemanticCache = true`.
+
+  Inserted BETWEEN `llm-token-limit` and `set-backend-service` so that:
+    - the cache is consulted after auth + quota checks,
+    - on a cache hit the backend hop is skipped entirely (faster, no model cost),
+    - on a cache miss `set-backend-service` still routes to the SC Foundry account.
+
+  Placeholder tokens replaced via Bicep `replace()` in T-027:
+    {{CACHE_TTL_SECONDS}} -> 300   (5 minutes; default; override-able)
+-->
+<llm-semantic-cache-lookup
+    score-threshold="0.85"
+    embeddings-backend-id="embeddings-backend"
+    embeddings-backend-auth="system-assigned-managed-identity">
+    <vary-by>@(context.Request.Headers.GetValueOrDefault("x-user-id", ""))</vary-by>
+</llm-semantic-cache-lookup>

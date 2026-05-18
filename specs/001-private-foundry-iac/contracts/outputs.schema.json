@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/specs/001-private-foundry-iac/contracts/outputs.schema.json",
+  "title": "Private Foundry Agent IaC — main.bicep Output Contract",
+  "description": "JSON Schema describing the outputs main.bicep MUST emit. Consumed by azd (`azd env get-values`), by the postprovision validation hook, and by humans inspecting `azd show`. No secrets, no keys; only resource IDs, principal IDs, and the private gateway hostname.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agentResourceGroupName",
+    "modelResourceGroupName",
+    "weFoundryAccountId",
+    "weFoundryProjectId",
+    "weFoundryProjectEndpoint",
+    "agentProjectPrincipalId",
+    "scFoundryAccountId",
+    "apimServiceId",
+    "apimGatewayHostname",
+    "apimInboundPrivateEndpointId",
+    "apimPrincipalId",
+    "privateDnsZoneIds",
+    "modelDeploymentNames"
+  ],
+  "properties": {
+    "agentResourceGroupName": {
+      "type": "string",
+      "description": "Name of the agent regional resource group (region = first half of regionPair)."
+    },
+    "modelResourceGroupName": {
+      "type": "string",
+      "description": "Name of the Sweden Central model resource group."
+    },
+    "weFoundryAccountId": {
+      "type": "string",
+      "description": "Resource ID of the agent-region Foundry / Cognitive Services account (W-I1 in data-model.md)."
+    },
+    "weFoundryProjectId": {
+      "type": "string",
+      "description": "Resource ID of the agent-region Foundry project (W-I2)."
+    },
+    "weFoundryProjectEndpoint": {
+      "type": "string",
+      "format": "uri",
+      "description": "Foundry project endpoint URL (private; resolved via WE private DNS). This is what the agent SDK targets."
+    },
+    "agentProjectPrincipalId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "System-assigned managed identity principal ID of the WE Foundry project (W-I2). The audience subject in APIM's `validate-azure-ad-token` policy is derived from this principal."
+    },
+    "scFoundryAccountId": {
+      "type": "string",
+      "description": "Resource ID of the SC model-side Foundry / Azure OpenAI account (C-I1)."
+    },
+    "apimServiceId": {
+      "type": "string",
+      "description": "Resource ID of the APIM service in SC (X-1)."
+    },
+    "apimGatewayHostname": {
+      "type": "string",
+      "format": "hostname",
+      "description": "Private gateway hostname of the APIM service. Resolves to W-P5's private IP from inside the WE agent VNet via the `privatelink.azure-api.net` zone."
+    },
+    "apimInboundPrivateEndpointId": {
+      "type": "string",
+      "description": "Resource ID of the cross-region APIM inbound private endpoint (W-P5), located in the WE agent VNet's PE subnet."
+    },
+    "apimPrincipalId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "System-assigned managed identity principal ID of the APIM service (X-1). Used by `authentication-managed-identity` and granted `Cognitive Services OpenAI User` on the SC Foundry account (X-3)."
+    },
+    "privateDnsZoneIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Resource IDs of the private DNS zones the solution either created or reused. Keyed by canonical zone name. Allows downstream tooling to verify zone ownership and A-record bindings.",
+      "properties": {
+        "we": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Zones linked to the WE agent VNet.",
+          "required": [
+            "privatelink.services.ai.azure.com",
+            "privatelink.openai.azure.com",
+            "privatelink.cognitiveservices.azure.com",
+            "privatelink.search.windows.net",
+            "privatelink.blob.core.windows.net",
+            "privatelink.documents.azure.com",
+            "privatelink.azure-api.net"
+          ],
+          "properties": {
+            "privatelink.services.ai.azure.com": { "type": "string" },
+            "privatelink.openai.azure.com": { "type": "string" },
+            "privatelink.cognitiveservices.azure.com": { "type": "string" },
+            "privatelink.search.windows.net": { "type": "string" },
+            "privatelink.blob.core.windows.net": { "type": "string" },
+            "privatelink.documents.azure.com": { "type": "string" },
+            "privatelink.azure-api.net": { "type": "string" }
+          }
+        },
+        "sc": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Zones linked to the SC VNet.",
+          "required": [
+            "privatelink.openai.azure.com",
+            "privatelink.services.ai.azure.com",
+            "privatelink.cognitiveservices.azure.com"
+          ],
+          "properties": {
+            "privatelink.openai.azure.com": { "type": "string" },
+            "privatelink.services.ai.azure.com": { "type": "string" },
+            "privatelink.cognitiveservices.azure.com": { "type": "string" }
+          }
+        }
+      },
+      "required": ["we", "sc"]
+    },
+    "modelDeploymentNames": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Echoes the deployment names created on the SC Foundry / Azure OpenAI account. The Foundry Azure API Management connection (X-5) lists these (static discovery) or APIM serves them (dynamic discovery)."
+    },
+    "agentVnetId": {
+      "type": "string",
+      "description": "Resource ID of the agent VNet (W-N1). Optional output; convenient for cross-stack diagnostics."
+    },
+    "scVnetId": {
+      "type": "string",
+      "description": "Resource ID of the SC VNet (C-N1). Optional output."
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "description": "Echoes the input logAnalyticsWorkspaceId when set, empty string otherwise. Lets the postprovision audit confirm which workspace (if any) the diagnostic settings target."
+    }
+  }
+}
