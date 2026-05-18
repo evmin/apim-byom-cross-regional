@@ -483,6 +483,7 @@ module wiring 'modules/wiring.bicep' = {
 
     apimGatewayHostname: scModelPlane.outputs.apimGatewayHostname
     modelDeploymentNames: scModelPlane.outputs.modelDeploymentNames
+    modelDeployments: modelDeploymentsArray
     urlPathStyle: urlPathStyle
     enableDynamicDiscovery: enableDynamicDiscovery
   }
