@@ -217,6 +217,19 @@ var agentRgName = '${namePrefix}-${azdEnvironmentName}-agent-${agentRegionShort}
 var modelRgName = '${namePrefix}-${azdEnvironmentName}-model-sc-rg'
 
 // =============================================================================
+// apim-byom connection shared api-key (PR #1 fix-up — root cause #2 from
+// commit 95342e0). The Foundry Responses API rejects the apim-byom connection
+// with `400 "Connection not found"` when the connection has `authType: AAD`.
+// Switching to `authType: ApiKey` requires a key value that lives on BOTH
+// the connection (`credentials.key`) and inside the APIM policy (the
+// validate-header gate at infra/policies/inbound.xml). uniqueString() makes
+// the value deterministic across redeploys without checking a secret into
+// source. Pure-AAD callers (jumpbox UAMI smoke-bridge) still pass through
+// the policy's AAD fallback branch — the key just bypasses AAD validation.
+// =============================================================================
+var apimByomConnectionKey = uniqueString(subscription().subscriptionId, azdEnvironmentName, namePrefix, 'apim-byom-key-v1')
+
+// =============================================================================
 // Cross-property validation (T-007) — encoded via the _validate.bicep module
 // which uses @allowed(['ok']) on every check param. Cross-property checks that
 // JSON Schema cannot express live here (parameters.schema.json § validationNotes).
@@ -450,6 +463,7 @@ module apimPolicy 'modules/apim-policy.bicep' = {
     ]
     tenantId: subscription().tenantId
     enableSemanticCache: enableSemanticCache
+    apimByomConnectionKey: apimByomConnectionKey
   }
 }
 
@@ -486,6 +500,7 @@ module wiring 'modules/wiring.bicep' = {
     modelDeployments: modelDeploymentsArray
     urlPathStyle: urlPathStyle
     enableDynamicDiscovery: enableDynamicDiscovery
+    apimByomConnectionKey: apimByomConnectionKey
   }
 }
 
