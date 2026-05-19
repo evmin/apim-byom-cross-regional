@@ -4,13 +4,13 @@
 
 **Input**: Feature specification from `specs/001-private-foundry-iac/spec.md`
 
-**Architecture source of truth**: [`005_architecture.md`](../../005_architecture.md) at the repository root.
+**Architecture source of truth**: [`../../docs/001_architecture.md`](../../docs/001_architecture.md) at the repository root.
 
 **Note**: This file is the `/speckit.plan` output. It does not enumerate executable tasks — that is `/speckit.tasks`. It does not author Bicep source — that is `/speckit.implement`.
 
 ## Summary
 
-Encode the private Foundry Agent Service + cross-region APIM + Sweden Central model topology described in `005_architecture.md` as an Azure Developer CLI (`azd`) project that uses Bicep with Azure Verified Modules (AVM) as the strict first preference. The operator drives the lifecycle with `azd up` / `azd down` / `azd provision --preview`. Every Foundry, Azure OpenAI, APIM, Cosmos DB, AI Search, and Storage resource is provisioned with public network access disabled; the only network-reachable surfaces are private endpoints in customer VNets in West Europe (or East US 2) for the agent plane and Sweden Central for the model plane. Identity on the runtime path is exclusively AAD via system-assigned managed identities — one on the agent project, one on the APIM instance.
+Encode the private Foundry Agent Service + cross-region APIM + Sweden Central model topology described in `../../docs/001_architecture.md` as an Azure Developer CLI (`azd`) project that uses Bicep with Azure Verified Modules (AVM) as the strict first preference. The operator drives the lifecycle with `azd up` / `azd down` / `azd provision --preview`. Every Foundry, Azure OpenAI, APIM, Cosmos DB, AI Search, and Storage resource is provisioned with public network access disabled; the only network-reachable surfaces are private endpoints in customer VNets in West Europe (or East US 2) for the agent plane and Sweden Central for the model plane. Identity on the runtime path is exclusively AAD via system-assigned managed identities — one on the agent project, one on the APIM instance.
 
 The plan commits to:
 
@@ -59,7 +59,7 @@ Everything below is the *plan* for the implementation; no Bicep is authored in t
 - Re-`azd up` (idempotent no-op) SHOULD complete in well under five minutes once APIM is created.
 - Runtime path performance is a *product* of the topology (PE-to-PE hops) and is not a Bicep-level concern; latency targets sit with the consuming feature, not this IaC.
 
-**Constraints** (binding; flow from `005_architecture.md`, the spec, and the constitution):
+**Constraints** (binding; flow from `../../docs/001_architecture.md`, the spec, and the constitution):
 
 - Public network access disabled on every Foundry / AOAI / APIM / Cosmos / AI Search / Storage at all times. No "create public, then disable" pattern.
 - Foundry account region MUST equal the agent VNet region (Microsoft API-level rule, no override). The IaC validates this before any resource is created.
@@ -87,7 +87,7 @@ The active constitution (`/.specify/memory/constitution.md`, v1.0.0, ratified 20
 **Status**: PASS.
 
 - Assumptions are stated explicitly in `spec.md` (§ Assumptions) and the four open questions from the spec's clarification round are recorded under § Clarifications, all resolved before this plan was authored.
-- Architecture-level decisions (region pair, identity flavour, egress scope, URL-path style) are captured in `005_architecture.md` (the source of WHAT) and the spec's Clarifications block (the resolved decisions). This plan does not re-decide them.
+- Architecture-level decisions (region pair, identity flavour, egress scope, URL-path style) are captured in `../../docs/001_architecture.md` (the source of WHAT) and the spec's Clarifications block (the resolved decisions). This plan does not re-decide them.
 - Remaining unknowns (AVM coverage for Foundry sub-resources, APIM v2 SKU AVM property surface, cross-region PE module support, agent-subnet sizing for `Microsoft.App/environments`, APIM policy authoring style, Foundry connection authoring path, DNS zone ownership) are enumerated in `research.md` rather than silently chosen. The plan resolves each before moving to module-boundary design.
 
 ### Principle II — Simplicity First
@@ -104,7 +104,7 @@ The active constitution (`/.specify/memory/constitution.md`, v1.0.0, ratified 20
 **Status**: PASS.
 
 - The plan touches only `specs/001-private-foundry-iac/` and a tightly bounded update to `.github/copilot-instructions.md` between the existing `<!-- SPECKIT START -->` / `<!-- SPECKIT END -->` markers, as the template instructs.
-- The plan does not propose edits to `005_architecture.md`, the constitution, or any other speckit feature directory.
+- The plan does not propose edits to `../../docs/001_architecture.md`, the constitution, or any other speckit feature directory.
 - Future Bicep authoring (under `/speckit.implement`) will be confined to a new top-level `infra/` directory plus an `azure.yaml` at the repo root (or under the feature directory if speckit convention requires it; see Project Structure § Decision). No edits to unrelated files.
 
 ### Principle IV — Goal-Driven Execution
@@ -141,7 +141,7 @@ The active constitution (`/.specify/memory/constitution.md`, v1.0.0, ratified 20
 
 **Status**: PASS.
 
-- The canonical architecture document is `005_architecture.md`. This plan, the spec, and all subsequent artifacts defer to it. No architectural decision is invented in `plan.md` that is not already present in `005_architecture.md` or recorded in `spec.md` § Clarifications.
+- The canonical architecture document is `../../docs/001_architecture.md`. This plan, the spec, and all subsequent artifacts defer to it. No architectural decision is invented in `plan.md` that is not already present in `../../docs/001_architecture.md` or recorded in `spec.md` § Clarifications.
 
 ### Development Workflow & Quality Gates
 
@@ -225,7 +225,7 @@ specs/001-private-foundry-iac/
 **Inputs**:
 
 - `spec.md` (decision-complete, 0 `[NEEDS CLARIFICATION]` markers).
-- `005_architecture.md`.
+- `../../docs/001_architecture.md`.
 - The constitution (private-by-default, AVM-first, approved regions, single source of architectural truth).
 - The technical-stack commitments in this plan (§ Technical Context).
 

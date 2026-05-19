@@ -143,7 +143,7 @@
       "type": "string",
       "enum": ["disabled", "privatePreviewOnly"],
       "default": "disabled",
-      "description": "APIM developer-portal exposure. Default 'disabled' matches the lockdown posture of 005_architecture.md. 'privatePreviewOnly' is a documented but currently inert option (no public exposure ever)."
+      "description": "APIM developer-portal exposure. Default 'disabled' matches the lockdown posture of docs/001_architecture.md. 'privatePreviewOnly' is a documented but currently inert option (no public exposure ever)."
     },
     "existingPrivateDnsZoneIds": {
       "type": "object",

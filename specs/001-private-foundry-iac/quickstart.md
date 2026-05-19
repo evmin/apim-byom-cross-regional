@@ -2,7 +2,7 @@
 
 **Feature**: `001-private-foundry-iac`
 **Plan**: [`plan.md`](./plan.md)
-**Architecture**: [`005_architecture.md`](../../005_architecture.md)
+**Architecture**: [`../../docs/001_architecture.md`](../../docs/001_architecture.md)
 
 One-page operator walkthrough. Brings up the full private topology (WE agent plane + SC model plane + cross-region APIM bridge) with a single `azd up`, smoke-tests it, and tears it down with `azd down`.
 

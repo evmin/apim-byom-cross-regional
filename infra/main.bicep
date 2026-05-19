@@ -7,7 +7,7 @@
 // resources have publicNetworkAccess disabled at create time; identity on
 // the runtime path is exclusively AAD via system-assigned managed identities.
 //
-// Architecture source of truth: ../005_architecture.md
+// Architecture source of truth: ../docs/001_architecture.md
 // Plan: ../specs/001-private-foundry-iac/plan.md
 // Tasks: ../specs/001-private-foundry-iac/tasks.md (T-006..T-009)
 // =============================================================================
