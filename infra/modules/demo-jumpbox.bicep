@@ -265,11 +265,11 @@ runcmd:
   agentResourceGroupName,
   modelResourceGroupName,
   uami.outputs.clientId,
-  base64(loadTextContent('../../scripts/jumpbox/bootstrap.sh')),
-  base64(loadTextContent('../../scripts/jumpbox/smoke-reject.sh')),
-  base64(loadTextContent('../../scripts/jumpbox/smoke-dns.sh')),
-  base64(loadTextContent('../../scripts/jumpbox/posture-from-vnet.sh')),
-  base64(loadTextContent('../../scripts/jumpbox/smoke-bridge.sh'))
+  base64(loadTextContent('../../scripts/jumpbox-vm/bootstrap.sh')),
+  base64(loadTextContent('../../scripts/jumpbox-vm/smoke-reject.sh')),
+  base64(loadTextContent('../../scripts/jumpbox-vm/smoke-dns.sh')),
+  base64(loadTextContent('../../scripts/jumpbox-vm/posture-from-vnet.sh')),
+  base64(loadTextContent('../../scripts/jumpbox-vm/smoke-bridge.sh'))
 )
 
 // =============================================================================

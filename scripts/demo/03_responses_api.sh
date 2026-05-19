@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# demo-scripts/03_responses_api.sh — STAGE 3: end-to-end via Responses API (v2).
+# scripts/demo/03_responses_api.sh — STAGE 3: end-to-end via Responses API (v2).
 # =============================================================================
 # Proves the full cross-region path works:
 #   Switzerland North Foundry project → `apim-byom` connection
@@ -127,7 +127,7 @@ REMOTE_EOF
 )
 
 REMOTE_B64=$(printf '%s' "$REMOTE" | base64 | tr -d '\n')
-if ! ../scripts/jumpbox-run.sh "echo $REMOTE_B64 | base64 -d | bash"; then
+if ! ../jumpbox-run.sh "echo $REMOTE_B64 | base64 -d | bash"; then
   echo "FAIL — 03_responses_api: remote script errored" >&2
   exit 1
 fi

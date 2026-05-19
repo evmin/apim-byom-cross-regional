@@ -80,8 +80,8 @@ Either way, APIM strips the inbound credential and calls the model using its own
 | Path | What's there |
 |---|---|
 | `infra/` | The Bicep stack (Azure Verified Modules where available), wired into `azure.yaml` for `azd up`. |
-| `demo-scripts/` | Three-stage proof: model in SC, APIM in SC, end-to-end through the v2 Responses API. |
-| `scripts/jumpbox/` | Bootstrap + smoke suite that runs inside the agent VNet through Azure Bastion. |
+| `scripts/demo/` | Three-stage proof: model in SC, APIM in SC, end-to-end through the v2 Responses API. |
+| `scripts/jumpbox-vm/` | Bootstrap + smoke suite that runs inside the agent VNet through Azure Bastion. |
 | `docs/madr/` | Architecture Decision Records — what we chose, what we ruled out, why. |
 | `docs/001_architecture.md` | Long-form technical narrative — topology, DNS, policies, identity. |
 | `docs/002_quickstart.md`, `docs/003_portal_tunnel.md` | Day-2 operating procedures. |

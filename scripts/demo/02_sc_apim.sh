@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# demo-scripts/02_sc_apim.sh — STAGE 2: APIM in Sweden Central.
+# scripts/demo/02_sc_apim.sh — STAGE 2: APIM in Sweden Central.
 # =============================================================================
 # What this proves:
 #   The APIM service fronting the SC model is in Sweden Central, has its

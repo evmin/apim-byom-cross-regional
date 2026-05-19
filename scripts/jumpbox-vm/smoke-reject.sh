@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/jumpbox/smoke-reject.sh — APIM authz negative test.
+# scripts/jumpbox-vm/smoke-reject.sh — APIM authz negative test.
 # =============================================================================
 # Proves the APIM `validate-azure-ad-token` policy is actually enforcing by
 # issuing a chat-completion against APIM with a token whose AUDIENCE is NOT

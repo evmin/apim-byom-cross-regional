@@ -435,7 +435,7 @@ module apimPolicy 'modules/apim-policy.bicep' = {
     scFoundryAccountName: scModelPlane.outputs.scFoundryAccountName
     agentProjectPrincipalId: weAgentPlane.outputs.agentProjectPrincipalId
     // Demo jumpbox UAMI is appended so the operator can exercise the
-    // cross-region inference bridge (scripts/jumpbox/smoke-bridge.sh) from
+    // cross-region inference bridge (scripts/jumpbox-vm/smoke-bridge.sh) from
     // inside the agent VNet without spinning up an agent run. The
     // smoke-reject test deliberately uses a *wrong-audience* token so the
     // negative case stays meaningful even with the jumpbox UAMI allowlisted.

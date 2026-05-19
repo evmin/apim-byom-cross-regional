@@ -134,14 +134,14 @@ The deployment ships with two verification suites. Run them from the workstation
 
 ```bash
 # Three-stage demo — proves the cross-region BYOM path works end-to-end.
-bash demo-scripts/run-all.sh
+bash scripts/demo/run-all.sh
 
 # Five-check smoke suite — runs from inside the agent VNet via Bastion.
 # Also wired into `azd up` as a postprovision hook when ENABLE_SMOKE_VALIDATION=true.
 bash scripts/jumpbox-smoke.sh
 ```
 
-`demo-scripts/run-all.sh` runs three scripts and prints `ALL STAGES PASS` on success:
+`scripts/demo/run-all.sh` runs three scripts and prints `ALL STAGES PASS` on success:
 
 | Stage | Script | What it proves |
 |---|---|---|
@@ -178,11 +178,11 @@ Every `pub` column must read `Disabled`. APIM's `publicNetworkAccess` reading `D
 
 ### Manual SDK smoke
 
-When you need to drive the path from your own code rather than the suite scripts, point an `AIProjectClient` at the agent project endpoint and call the v2 Responses API. The canonical reference is the bash + Python heredoc in [`demo-scripts/03_responses_api.sh`](../demo-scripts/03_responses_api.sh) — run it through the jumpbox via Bastion (or copy the snippet into your own private-network host):
+When you need to drive the path from your own code rather than the suite scripts, point an `AIProjectClient` at the agent project endpoint and call the v2 Responses API. The canonical reference is the bash + Python heredoc in [`scripts/demo/03_responses_api.sh`](../scripts/demo/03_responses_api.sh) — run it through the jumpbox via Bastion (or copy the snippet into your own private-network host):
 
 ```bash
 # From the workstation: runs Python on the jumpbox via Bastion.
-bash demo-scripts/03_responses_api.sh
+bash scripts/demo/03_responses_api.sh
 ```
 
 The script issues two calls. Both must return `'PONG'`:
@@ -213,7 +213,6 @@ A second consecutive `azd up` with unchanged parameters reports zero material ch
 To switch region pairs in-place:
 
 ```bash
-./scripts/verify-region-pair-switch.sh    # checks the new pair is supported + capacity is plausible
 azd env set REGION_PAIR <new-pair>
 azd provision
 ```
@@ -241,7 +240,6 @@ Operator-owned inputs (BYO private DNS zones, BYO Log Analytics workspace) are n
 | `jumpbox-smoke.sh` step `smoke-dns` returns a public IP | The agent VNet is not linked to one of the `privatelink.*` zones. Re-deploy. |
 | Network-posture audit shows a resource with `publicNetworkAccess=Enabled` | A postprovision hook didn't run. Re-run `azd provision`. |
 | `azd down` complains about role assignments on deleted scopes | Eventual-consistency lag. Re-run `azd down`. |
-| Half-finished deploy needs recovery | `scripts/abort-and-resume.sh` cleans intermediate state so `azd up` can resume. |
 
 ## Reference scripts
 
@@ -250,13 +248,11 @@ Operator-owned inputs (BYO private DNS zones, BYO Log Analytics workspace) are n
 | `scripts/verify-bicep.sh` | Compile-check every Bicep file (`az bicep build`). |
 | `scripts/whatif.sh` | ARM what-if on the current `azd` env. |
 | `scripts/verify-idempotency.sh` | Re-runs `azd provision`; asserts no-op. |
-| `scripts/verify-region-pair-switch.sh` | Pre-flight a region-pair change. |
 | `scripts/verify-teardown.sh` | Asserts no resource left behind after `azd down`. |
-| `scripts/abort-and-resume.sh` | Clean up a half-finished deploy and resume. |
 | `scripts/jumpbox-smoke.sh` | Five-check validation suite via Bastion. |
 | `scripts/jumpbox-connect.sh` | Open an interactive SSH-over-Bastion shell on the jumpbox. |
 | `scripts/jumpbox-run.sh` | One-shot remote command on the jumpbox via Bastion. |
-| `demo-scripts/run-all.sh` | Three-stage end-to-end demo. |
+| `scripts/demo/run-all.sh` | Three-stage end-to-end demo. |
 
 ## What this does *not* do
 
