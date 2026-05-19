@@ -37,45 +37,37 @@
   elements inside the <inbound> element of the assembled policy document.
 -->
 <fragment>
-    <!-- 1. AAD bearer verification — every request MUST carry a trusted-MI-issued token.
-             - audiences:
-                 * https://cognitiveservices.azure.com/  — what AOAI / `<acct>.openai.azure.com`
-                   data-plane SDK clients sign for.
-                 * https://ai.azure.com                  — what Foundry v1 / AIProjectClient
-                   SDK clients sign for (audience differs by data-plane).
-             - oids:
-                 * Agent project system-assigned MI (always present — this is the
-                   principal the Foundry agents runtime signs upstream calls with).
-                 * Optional: jumpbox UAMI (present in fdev/demo envs only — lets
-                   the operator exercise the cross-region inference bridge from
-                   inside the agent VNet without spinning up an agent run). -->
-    <validate-azure-ad-token
-        tenant-id="{{TENANT_ID}}"
-        header-name="Authorization"
-        failed-validation-httpcode="401"
-        failed-validation-error-message="Invalid or missing AAD bearer.">
-        <audiences>
-            <audience>https://cognitiveservices.azure.com/</audience>
-            <audience>https://ai.azure.com</audience>
-        </audiences>
-        <required-claims>
-            <claim name="oid" match="any">{{ALLOWED_OIDS_XML}}</claim>
-        </required-claims>
-    </validate-azure-ad-token>
+    <!-- 1. Auth gate — dual-mode: subscription key (ApiKey connections from Foundry
+             Responses API) OR AAD bearer (MI-based callers like jumpbox UAMI).
+             When APIM has already validated a subscription key (subscriptionRequired=true
+             on the API), context.Subscription is non-null and we skip AAD validation.
+             When no subscription is present (MI-based callers), we fall through to
+             validate-azure-ad-token. This supports both Foundry ApiKey connections
+             (v2 prompt agents via Responses API) and MI-based direct calls (jumpbox
+             smoke scripts). -->
+    <choose>
+        <when condition="@(context.Subscription == null)">
+            <validate-azure-ad-token
+                tenant-id="{{TENANT_ID}}"
+                header-name="Authorization"
+                failed-validation-httpcode="401"
+                failed-validation-error-message="Invalid or missing AAD bearer.">
+                <audiences>
+                    <audience>https://cognitiveservices.azure.com/</audience>
+                    <audience>https://ai.azure.com</audience>
+                </audiences>
+                <required-claims>
+                    <claim name="oid" match="any">{{ALLOWED_OIDS_XML}}</claim>
+                </required-claims>
+            </validate-azure-ad-token>
+        </when>
+    </choose>
 
-    <!-- 2. Backend rewrite to the SC Foundry / AOAI account. The hostname is the
-         private-link hostname resolved via SC DNS zone C-Z1 from inside APIM's
-         outbound VNet integration (C-N2). The trailing `/openai` is the AOAI
-         data-plane path prefix; combined with APIM's `path: openai` strip on
-         the openai API, the composed URL is
-         `https://<acct>.openai.azure.com/openai/deployments/<name>/...`. -->
+    <!-- 2. Backend rewrite to the SC Foundry / AOAI account. -->
     <set-backend-service base-url="{{BACKEND_URL}}" />
 
     <!-- 3. Acquire APIM's system-assigned MI token for AOAI and overwrite the caller's
-         Authorization header on the forward request. The `output-token-variable-name`
-         + explicit `set-header` form is more robust than the implicit header
-         injection mode in APIM v2 — without it, some StandardV2 instances return
-         200 with an empty body. -->
+         Authorization header on the forward request. -->
     <authentication-managed-identity
         resource="{{BACKEND_AUDIENCE}}"
         output-token-variable-name="msi-token"

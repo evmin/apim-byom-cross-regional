@@ -16,10 +16,16 @@
 // module, or `avm/res/cognitive-services/account` >= 0.15.x with `projects[]`
 // + nested `connections[]` first-class params).
 //
+// Connection schema follows the verified-working shape from
+// microsoft-foundry/foundry-samples 01-connections/apim — specifically:
+//   - authType: 'ProjectManagedIdentity' (NOT legacy 'AAD')
+//   - audience at properties.audience (NOT in metadata)
+//   - metadata.models: JSON-stringified array with full model properties
+//   - metadata.deploymentInPath: 'true' for AOAI-shape backends
+//   - metadata.inferenceAPIVersion: GA AOAI API version
+//
 // `properties.category` MUST be `ApiManagement` (verified against the Foundry
-// portal-authored example at R-A1 time). If Foundry rejects `ApiManagement` at
-// deploy time, switch to `ModelGateway` (documented second-choice fallback)
-// and record the working value in an inline comment.
+// portal-authored example at R-A1 time and the foundry-cross-resource skill).
 // =============================================================================
 
 targetScope = 'resourceGroup'
@@ -36,21 +42,15 @@ param connectionName string = 'apim-byom'
 @description('APIM private gateway hostname (e.g., my-apim.azure-api.net).')
 param apimGatewayHostname string
 
-@description('APIM service resource ID — surfaced in connection metadata for cross-reference.')
-param apimServiceId string
+@description('Full model deployment specs — needed to build the JSON-stringified models metadata with name, format, version, publisher.')
+param modelDeployments array
 
-@description('Model deployment names — comma-joined into metadata.deployments for static discovery.')
-param modelDeploymentNames array
-
-@description('URL-path style: aoai or openai.')
+@description('URL-path style: aoai or openai. Maps to metadata.deploymentInPath: aoai→true, openai→false.')
 @allowed([
   'aoai'
   'openai'
 ])
 param urlPathStyle string
-
-@description('When true, the connection uses dynamic discovery (APIM serves /deployments or /models).')
-param enableDynamicDiscovery bool
 
 // Existing parents — we author the connection as a grandchild of the account.
 resource weAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
@@ -62,10 +62,15 @@ resource weProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' ex
   name: weFoundryProjectName
 }
 
-// AVM gap: see research.md R-01 / R-06 / R-A1.
-// The 2025-06-01 type definition for projects/connections confirms
-//   authType=AAD, target, category, metadata are all authorable.
-// If Foundry rejects category='ApiManagement', try 'ModelGateway' (R-A1).
+// Build the JSON-stringified models array required by the Foundry APIM connection.
+// Each entry must carry the full model identity (name, format, version, publisher).
+// The metadata.models value is a Dictionary<string, string> entry so the JSON array
+// must be serialized as a string — NOT passed as a native Bicep array.
+var modelsJsonEntries = [for d in modelDeployments: '{"name":"${d.name}","properties":{"model":{"name":"${d.model}","format":"OpenAI","version":"${d.version}","publisher":"Microsoft"}}}']
+var modelsJsonString = '[${join(modelsJsonEntries, ',')}]'
+
+// Connection schema: verified-working shape from foundry-cross-resource skill
+// (live-verified 2026-04-23 against microsoft-foundry/foundry-samples).
 resource connection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
   parent: weProject
   name: connectionName
@@ -74,13 +79,12 @@ resource connection 'Microsoft.CognitiveServices/accounts/projects/connections@2
     category: 'ApiManagement'
     target: 'https://${apimGatewayHostname}'
     isSharedToAll: false
+    audience: 'https://cognitiveservices.azure.com'
+    credentials: {}
     metadata: {
-      audience: 'https://cognitiveservices.azure.com/'
-      urlPathStyle: urlPathStyle
-      dynamicDiscovery: enableDynamicDiscovery ? 'true' : 'false'
-      deployments: join(modelDeploymentNames, ',')
-      location: 'swedencentral'
-      apimServiceId: apimServiceId
+      deploymentInPath: urlPathStyle == 'aoai' ? 'true' : 'false'
+      inferenceAPIVersion: '2024-10-21'
+      models: modelsJsonString
     }
   }
 }

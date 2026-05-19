@@ -72,6 +72,9 @@ param apimGatewayHostname string
 @description('Model deployment names — surfaced in the Foundry connection metadata for static discovery.')
 param modelDeploymentNames array
 
+@description('Full model deployment specs — needed to build the JSON-stringified models metadata in the Foundry connection.')
+param modelDeployments array
+
 @description('URL-path style for the Foundry connection metadata.')
 @allowed([
   'aoai'
@@ -175,10 +178,8 @@ module foundryConnection 'foundry-connection.bicep' = {
     weFoundryProjectName: weFoundryProjectName
     connectionName: 'apim-byom'
     apimGatewayHostname: apimGatewayHostname
-    apimServiceId: apimServiceId
-    modelDeploymentNames: modelDeploymentNames
+    modelDeployments: modelDeployments
     urlPathStyle: urlPathStyle
-    enableDynamicDiscovery: enableDynamicDiscovery
   }
   dependsOn: [
     rbacModelRg  // role must exist before the connection is exercised
