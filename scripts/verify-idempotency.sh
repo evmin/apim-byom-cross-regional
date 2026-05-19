@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/verify-idempotency.sh — T-035 idempotency check.
+# scripts/verify-idempotency.sh — idempotency check.
 # =============================================================================
 #
 # Pre-condition: `azd up` already ran to completion. This script re-runs

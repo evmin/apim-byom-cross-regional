@@ -38,6 +38,6 @@ Concretely (PR #4, commit `4cd7b55`):
 
 ## References
 
-- `demo-scripts/03_responses_api.sh` — the canonical Stage 3 proof.
+- `scripts/demo/03_responses_api.sh` — the canonical Stage 3 proof.
 - PR #4 (`evmin/cleanup/v1-assistants-threads`, commit `4cd7b55`) — landed this cleanup.
 - Foundry Prompt Agents + Responses API: https://learn.microsoft.com/en-us/azure/ai-foundry/agents/concepts/runtime-components

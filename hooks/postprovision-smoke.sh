@@ -36,7 +36,7 @@ fi
 ENV_VALUES=$(azd env get-values 2>/dev/null || true)
 if ! echo "${ENV_VALUES}" | grep -q '^jumpboxVmId='; then
   echo "smoke: jumpboxVmId missing from azd env — has \`azd provision\` finished?" >&2
-  echo "smoke: skipping (FR-029 — no jumpbox available)" >&2
+  echo "smoke: skipping — no jumpbox available" >&2
   exit 0
 fi
 

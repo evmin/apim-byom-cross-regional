@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/whatif.sh — T-034 what-if verification.
+# scripts/whatif.sh — what-if verification.
 # =============================================================================
 #
 # Wraps `azd provision --preview` and (optionally) `az deployment sub what-if`
 # so operators can inspect the resource churn before committing to `azd up`.
 # Captures the what-if JSON for review under `.build/whatif-<env>.json`.
 #
-# Acceptance (per tasks.md T-034): output lists ~30–40 resource creates across
-# the two RGs, zero deletes, zero "ignored"/"unsupported" resources.
+# Acceptance: output lists ~30–40 resource creates across the two RGs, zero
+# deletes, zero "ignored"/"unsupported" resources.
 # =============================================================================
 
 set -euo pipefail

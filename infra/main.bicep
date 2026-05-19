@@ -1,4 +1,4 @@
-// main.bicep — subscription-scoped entry point for `001-private-foundry-iac`.
+// main.bicep — subscription-scoped entry point for the private Foundry IaC demo.
 
 // Provisions a private Foundry Agent Service in WE (or EUS2) and a Sweden
 // Central model plane bridged by an APIM Std v2 / Prem v2 service. All
