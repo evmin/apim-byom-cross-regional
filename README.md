@@ -1,6 +1,8 @@
 # mreg — private Foundry agent across regions
 
-A demo IaC stack that runs an Azure AI Foundry agent privately in an AI landing zone (East US 2 or West Europe) and lets it call the newest Azure OpenAI models in Sweden Central. No public network access on either end.
+A demo IaC stack that runs an Azure AI Foundry agent privately in an AI landing zone (East US 2 or West Europe is the customer target) and lets it call the newest Azure OpenAI models in Sweden Central. No public network access on either end.
+
+**Note on the reference deployment.** This repo deploys the agent to **Switzerland North**, not EUS2 or WE. The design is region-agnostic — every Bicep parameter, policy, and connection target works the same way — but Switzerland North gives reliable APIM Std v2 + Foundry capacity for stand-up while EUS2 and WE are quota-constrained. Customers point the same Bicep at their EUS2 or WE landing zone with one environment variable (`REGION_PAIR`).
 
 The bridge is Azure API Management wired into Foundry as a Bring Your Own Model (BYOM) connection. Bicep + Azure Verified Modules, packaged for `azd up`.
 

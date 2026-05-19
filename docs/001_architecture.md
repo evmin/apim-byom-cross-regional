@@ -22,6 +22,8 @@ These rules forbid keeping the Foundry account in Sweden Central beside the mode
 
 Deploy the agent in an AI landing zone region (EUS2 or WE — Switzerland North, North Europe, and France Central are also supported in this IaC). Reach the Sweden Central model through Azure API Management. APIM lives in Sweden Central; its **outbound** path reaches the model over a private endpoint inside an SC VNet; its **inbound** path is exposed only through a private endpoint inside the agent VNet.
 
+> **Reference deployment.** EUS2 and WE are the customer-targeted landing zones. This repo's reference `azd up` runs in **Switzerland North** instead — same Bicep, same connection target, same APIM policy stack, just a different `REGION_PAIR`. Switzerland North has reliable APIM Std v2 + Foundry capacity at stand-up time; EUS2 and WE are routinely quota-constrained. Set `azd env set REGION_PAIR westeurope+swedencentral` (or `eastus2+swedencentral`) to deploy against the customer-target pair.
+
 ### Topology
 
 | # | Component | Region | Network exposure |
