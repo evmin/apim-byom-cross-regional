@@ -2,7 +2,7 @@
 
 This repo deploys a private Azure Foundry agent that calls Sweden Central models — without exposing anything to the public internet. The stack is Bicep, packaged for [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/), and ships with a jumpbox you can drive through Azure Bastion to validate the path end-to-end.
 
-This page is the two-minute introduction. For the full technical narrative read [`docs/005_architecture.md`](./docs/005_architecture.md). For decisions and rationale read the ADRs in [`docs/madr/`](./docs/madr/).
+This page is the two-minute introduction. For the full technical narrative read [`docs/001_architecture.md`](./docs/001_architecture.md). For decisions and rationale read the ADRs in [`docs/madr/`](./docs/madr/).
 
 ## The problem
 
@@ -83,11 +83,11 @@ Either way, APIM strips the inbound credential and calls the model using its own
 | `demo-scripts/` | Three-stage proof: model in SC, APIM in SC, end-to-end through the v2 Responses API. |
 | `scripts/jumpbox/` | Bootstrap + smoke suite that runs inside the agent VNet through Azure Bastion. |
 | `docs/madr/` | Architecture Decision Records — what we chose, what we ruled out, why. |
-| `docs/005_architecture.md` | Long-form technical narrative — topology, DNS, policies, identity. |
-| `docs/006_sop.md`, `docs/007_portal_tunnel.md` | Day-2 operating procedures. |
+| `docs/001_architecture.md` | Long-form technical narrative — topology, DNS, policies, identity. |
+| `docs/002_sop.md`, `docs/003_portal_tunnel.md` | Day-2 operating procedures. |
 
 ## Read next
 
-- **First time here?** → [`docs/005_architecture.md`](./docs/005_architecture.md) for the full technical narrative.
+- **First time here?** → [`docs/001_architecture.md`](./docs/001_architecture.md) for the full technical narrative.
 - **Want the decisions, not the diagrams?** → [`docs/madr/README.md`](./docs/madr/README.md).
 - **Want to run it?** → `azd up`, then `demo-scripts/run-all.sh`.

@@ -6,9 +6,9 @@
 
 **Status**: Draft
 
-**Input**: User description: "Design BICEP/AZD (azure developer cli)/Azure Verified Modules (AVM) solution for the task defined in 005_architecture.md"
+**Input**: User description: "Design BICEP/AZD (azure developer cli)/Azure Verified Modules (AVM) solution for the task defined in 001_architecture.md"
 
-**Source of WHAT**: The authoritative description of the target topology, network exposure rules, identity model, APIM policy stack, packet path, and Foundry wiring lives in `../../docs/005_architecture.md` at the repository root. This specification translates that architecture into the *requirements that the Infrastructure-as-Code solution itself must satisfy* — it does not redesign the architecture and it does not prescribe how the Bicep templates are organised.
+**Source of WHAT**: The authoritative description of the target topology, network exposure rules, identity model, APIM policy stack, packet path, and Foundry wiring lives in `../../docs/001_architecture.md` at the repository root. This specification translates that architecture into the *requirements that the Infrastructure-as-Code solution itself must satisfy* — it does not redesign the architecture and it does not prescribe how the Bicep templates are organised.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -26,15 +26,15 @@ A **platform / infrastructure engineer** ("the operator") who:
 
 ### User Story 1 - Single-command private deployment (Priority: P1)
 
-The operator clones the repository, sets a handful of required parameters (subscription, environment name, region pair, resource-name prefix), and runs `azd up`. The tool provisions the full topology described in `../../docs/005_architecture.md` — the West Europe agent plane, the Sweden Central model plane, the cross-region APIM bridge with inbound private endpoint in the WE agent VNet, the BYO data plane, all private DNS zones with the correct per-region VNet links, the two managed identities with their role assignments, the APIM GenAI policy stack, and the Foundry `Azure API Management` admin-connected model wiring — and at no point during deployment is any resource publicly reachable.
+The operator clones the repository, sets a handful of required parameters (subscription, environment name, region pair, resource-name prefix), and runs `azd up`. The tool provisions the full topology described in `../../docs/001_architecture.md` — the West Europe agent plane, the Sweden Central model plane, the cross-region APIM bridge with inbound private endpoint in the WE agent VNet, the BYO data plane, all private DNS zones with the correct per-region VNet links, the two managed identities with their role assignments, the APIM GenAI policy stack, and the Foundry `Azure API Management` admin-connected model wiring — and at no point during deployment is any resource publicly reachable.
 
-**Why this priority**: This is the MVP. Without it the architecture in `../../docs/005_architecture.md` cannot be reproduced. Every other story is a refinement of this one.
+**Why this priority**: This is the MVP. Without it the architecture in `../../docs/001_architecture.md` cannot be reproduced. Every other story is a refinement of this one.
 
 **Independent Test**: From a clean target subscription with no pre-existing resources in the target resource group(s), the operator runs `azd up` and observes (a) the command exits with success, (b) every Foundry / Azure OpenAI / APIM / Cosmos / AI Search / Storage resource it created reports `publicNetworkAccess = Disabled`, and (c) the WE agent project has a working `Azure API Management` connection that lists the configured Sweden Central model deployments.
 
 **Acceptance Scenarios**:
 
-1. **Given** a clean Azure subscription, `azd` and Bicep installed, and the required parameters set, **When** the operator runs `azd up`, **Then** the command completes successfully and the two regional stacks (WE agent plane, SC model plane) exist as described in the topology table of `../../docs/005_architecture.md`.
+1. **Given** a clean Azure subscription, `azd` and Bicep installed, and the required parameters set, **When** the operator runs `azd up`, **Then** the command completes successfully and the two regional stacks (WE agent plane, SC model plane) exist as described in the topology table of `../../docs/001_architecture.md`.
 2. **Given** a successful `azd up`, **When** the operator inspects each provisioned Foundry account, Azure OpenAI / Foundry model account, APIM instance, Cosmos DB account, AI Search service, and Storage account, **Then** every one of them reports `publicNetworkAccess = Disabled` (and APIM's public gateway is disabled).
 3. **Given** a successful `azd up`, **When** the operator inspects the cross-region wiring, **Then** the APIM instance lives in Sweden Central, its outbound VNet integration is into the SC VNet's APIM-outbound delegated subnet, and its inbound private endpoint NIC is in the WE agent VNet's private-endpoint subnet, resolvable from the WE VNet via `privatelink.azure-api.net`.
 4. **Given** a successful `azd up`, **When** the operator opens the WE Foundry project, **Then** an admin-connected model of type `Azure API Management` is configured with AAD auth, audience `https://cognitiveservices.azure.com/`, and the model deployments listed in the parameters.
@@ -126,7 +126,7 @@ After `azd up` completes, the operator can run a documented post-deploy validati
 
 **Scope and lifecycle**
 
-- **FR-001**: The solution MUST provision the entire topology described in `../../docs/005_architecture.md` (rows 1–7 of the topology table) within a single `azd` environment via a single `azd up` invocation.
+- **FR-001**: The solution MUST provision the entire topology described in `../../docs/001_architecture.md` (rows 1–7 of the topology table) within a single `azd` environment via a single `azd up` invocation.
 - **FR-002**: The solution MUST support `azd down` to remove every resource it created, in both regions, without leaving orphaned private endpoints, A-records in solution-managed DNS zones, or role assignments on solution-managed scopes.
 - **FR-003**: `azd up` MUST be idempotent: re-running it against an already-converged deployment MUST result in zero material changes.
 - **FR-004**: `azd up` MUST be recoverable: re-running it after a partial failure MUST reconcile state and reach the target topology without manual cleanup.
@@ -154,7 +154,7 @@ After `azd up` completes, the operator can run a documented post-deploy validati
   - the developer portal disabled (or only privately reachable per the configured posture),
   - an inbound private endpoint NIC in the *agent VNet's* private-endpoint subnet (cross-region PE), resolved via `privatelink.azure-api.net` linked to the agent VNet.
 - **FR-015**: The solution MUST reject APIM SKUs that do not support inbound private endpoints (Basic v2, Developer, Consumption, classic Standard/Premium v1) at parameter validation time, before any resource is created.
-- **FR-016**: The solution MUST install on the APIM instance the GenAI-gateway policy stack described in `../../docs/005_architecture.md`, in order:
+- **FR-016**: The solution MUST install on the APIM instance the GenAI-gateway policy stack described in `../../docs/001_architecture.md`, in order:
   - inbound: `validate-azure-ad-token` (audience `https://cognitiveservices.azure.com/`, matching the agent project MI's client/application ID), `llm-token-limit`, optional `llm-semantic-cache-lookup` (when enabled by parameter), `set-backend-service`;
   - backend: `authentication-managed-identity` (resource `https://cognitiveservices.azure.com`, using APIM's own managed identity), optional `llm-semantic-cache-store` (when enabled by parameter).
 - **FR-017**: The solution MUST enable a **system-assigned** managed identity on the APIM instance (lifecycle-bound to the APIM resource; no pre-provisioned user-assigned identity is required) and MUST grant that system-assigned principal `Cognitive Services OpenAI User` on the SC Foundry / Azure OpenAI account.
@@ -219,7 +219,7 @@ After `azd up` completes, the operator can run a documented post-deploy validati
 
 ### Measurable Outcomes
 
-- **SC-001**: From a clean target subscription, a single `azd up` invocation produces the complete topology described in `../../docs/005_architecture.md` and exits with success, without any manual intervention between phases.
+- **SC-001**: From a clean target subscription, a single `azd up` invocation produces the complete topology described in `../../docs/001_architecture.md` and exits with success, without any manual intervention between phases.
 - **SC-002**: After `azd up`, 100% of the Foundry accounts, Azure OpenAI / Foundry model accounts, APIM instances, Cosmos DB accounts, AI Search services, and Storage accounts provisioned by the solution report public network access disabled (and APIM's public gateway is disabled).
 - **SC-003**: After `azd up`, an inference call from the agent runtime to one of the configured Sweden Central model deployments succeeds end-to-end and traverses only private IPs (no segment of the path traverses a public IP).
 - **SC-004**: A second consecutive `azd up` with unchanged parameters reports zero material resource changes (true idempotency).
@@ -236,7 +236,7 @@ After `azd up` completes, the operator can run a documented post-deploy validati
 - **Naming**: Resource naming follows a parameter-driven prefix + standard Azure CAF abbreviation pattern; exact convention is a default that the operator can override via parameters.
 - **CIDR defaults**: Default CIDR ranges for the two VNets and four subnets are RFC1918 ranges that satisfy FR-006 (agent subnet `/24` recommended, `/27` minimum); the operator can override any of them via parameters.
 - **Semantic cache**: Defaults to OFF. The `llm-semantic-cache-lookup` / `llm-semantic-cache-store` policies are present but only enabled when the toggle is on.
-- **Developer portal**: Defaults to disabled, matching the lockdown posture of `../../docs/005_architecture.md`.
+- **Developer portal**: Defaults to disabled, matching the lockdown posture of `../../docs/001_architecture.md`.
 - **Egress control**: Out of scope. The operator brings their own egress control (or accepts the default Container Apps managed-identity egress in the WE agent VNet). The solution does not provision an Azure Firewall or any other egress-control resource. See *Out of Scope* below.
 - **Model discovery**: Defaults to static discovery on the Foundry `Azure API Management` connection (simpler operator experience). Dynamic discovery via `/deployments` or `/models` is supported via the toggle.
 - **Region pair default**: `westeurope` + `swedencentral` is the default; `eastus2` + `swedencentral` is the documented alternate, selectable via the `regionPair` parameter. Default CIDR examples, default-naming examples, and data-residency wording assume the WE+SC pair unless the operator selects EUS2+SC.
@@ -246,7 +246,7 @@ After `azd up` completes, the operator can run a documented post-deploy validati
 - **Observability**: The solution can accept a pre-existing Log Analytics workspace resource ID as a parameter and wire diagnostics settings to it, but designing/provisioning that workspace is out of scope.
 - **Existing private DNS zones**: The solution can run in either "create the zones" or "reuse existing zones" mode based on parameters; in reuse mode, the existing zones are never deleted on `azd down`.
 - **Capability host immutability**: The operator accepts that, once the WE Foundry project's capability host is provisioned and bound to an agent VNet, it cannot be moved later; changing region or agent VNet is a new-environment operation.
-- **BYOM legal posture**: The operator accepts the BYOM Responsible-AI / content-safety responsibility shift described in `../../docs/005_architecture.md`. The IaC itself does not encode or enforce this posture.
+- **BYOM legal posture**: The operator accepts the BYOM Responsible-AI / content-safety responsibility shift described in `../../docs/001_architecture.md`. The IaC itself does not encode or enforce this posture.
 
 ## Clarifications
 

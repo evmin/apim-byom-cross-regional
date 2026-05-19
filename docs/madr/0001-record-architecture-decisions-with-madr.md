@@ -5,7 +5,7 @@
 
 ## Context and Problem Statement
 
-The project has accumulated several architecture decisions whose rationale only lives in PR descriptions, commit messages, and the `../005_architecture.md` narrative. New contributors need a fast way to find "why was it built this way?" without reading the whole history.
+The project has accumulated several architecture decisions whose rationale only lives in PR descriptions, commit messages, and the `../001_architecture.md` narrative. New contributors need a fast way to find "why was it built this way?" without reading the whole history.
 
 ## Considered Options
 
@@ -21,7 +21,7 @@ Use **MADR** (https://adr.github.io/madr/), minimal template, one file per decis
 Rules:
 - ID format: 4-digit, zero-padded, monotonically increasing. Never reused.
 - Status: `proposed` → `accepted` → `superseded by 00NN` / `deprecated`. Never delete a file once accepted.
-- Keep ADRs short. Capture the **decision and why**, not the full design — long-form context belongs in `../005_architecture.md` and the code.
+- Keep ADRs short. Capture the **decision and why**, not the full design — long-form context belongs in `../001_architecture.md` and the code.
 - Cross-link with `[MADR-00NN](./00NN-…)` when one decision depends on or supersedes another.
 
 ## Consequences

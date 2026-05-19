@@ -31,7 +31,7 @@ Provision a small Ubuntu jumpbox VM in the agent VNet (`infra/modules/demo-jumpb
 - Operator entry point: `scripts/jumpbox-run.sh "<remote-bash>"` opens an `az network bastion tunnel`, ssh's in non-interactively, runs the command, tears down the tunnel.
 - Validation entry point: `scripts/jumpbox-smoke.sh` — dns / reject / bridge / posture checks. Demo entry point: `demo-scripts/run-all.sh` — 01 / 02 / 03.
 
-The Bastion is also used for browser access to the Foundry portal via SOCKS-over-SSH-over-Bastion — see `../007_portal_tunnel.md`.
+The Bastion is also used for browser access to the Foundry portal via SOCKS-over-SSH-over-Bastion — see `../003_portal_tunnel.md`.
 
 ## Consequences
 
@@ -43,5 +43,5 @@ The Bastion is also used for browser access to the Foundry portal via SOCKS-over
 
 - `infra/modules/demo-jumpbox.bicep` — VM, NIC, NSG, UAMI, cloud-init.
 - `scripts/jumpbox-run.sh`, `scripts/jumpbox-smoke.sh` — operator entry points.
-- `../007_portal_tunnel.md` — SOCKS tunnel for the Foundry portal.
+- `../003_portal_tunnel.md` — SOCKS tunnel for the Foundry portal.
 - Default outbound access retirement: https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/default-outbound-access

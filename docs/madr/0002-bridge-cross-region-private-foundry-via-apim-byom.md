@@ -41,4 +41,4 @@ Use **BYOM (Bring Your Own Model)** via a Foundry `Azure APIM` connection.
 
 - Foundry Agent + APIM (BYOM): https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/ai-gateway
 - Foundry virtual-network region rule: https://learn.microsoft.com/en-us/azure/ai-foundry/agents/how-to/virtual-networks
-- `../005_architecture.md` — full architecture narrative.
+- `../001_architecture.md` — full architecture narrative.
