@@ -342,7 +342,15 @@ resource apimOpenAiApi 'Microsoft.ApiManagement/service/apis@2024-05-01' = {
     displayName: 'OpenAI (BYOM via APIM)'
     path: 'openai'
     protocols: ['https']
-    subscriptionRequired: false
+    // subscriptionRequired=true so APIM validates the api-key header sent by
+    // Foundry's ApiKey connection. The dual-auth inbound policy (<choose> in
+    // inbound.xml) skips validate-azure-ad-token when a valid subscription is
+    // present, allowing both ApiKey (v2 prompt agents) and MI-based callers.
+    subscriptionRequired: true
+    subscriptionKeyParameterNames: {
+      header: 'api-key'
+      query: 'subscription-key'
+    }
     type: 'http'
     serviceUrl: 'https://${scFoundryAccountName}.openai.azure.com/openai'
   }
@@ -369,6 +377,22 @@ resource apimOpenAiCatchallGet 'Microsoft.ApiManagement/service/apis/operations@
 }
 
 // =============================================================================
+// X-2b — APIM subscription for the openai API (Foundry ApiKey auth)
+// =============================================================================
+// Foundry's ApiKey connection sends the subscription key as the `api-key`
+// header. This subscription is scoped to the openai API so the key only
+// grants access to the model bridge, not to any other APIM APIs.
+resource apimFoundrySubscription 'Microsoft.ApiManagement/service/subscriptions@2024-05-01' = {
+  parent: apimService
+  name: 'foundry-agent-sub'
+  properties: {
+    displayName: 'Foundry Agent Service'
+    scope: apimOpenAiApi.id
+    state: 'active'
+  }
+}
+
+// =============================================================================
 // Outputs
 // =============================================================================
 
@@ -385,5 +409,7 @@ output apimServiceId string = apim.outputs.resourceId
 output apimServiceName string = apimServiceName
 output apimPrincipalId string = apim.outputs.?systemAssignedMIPrincipalId ?? ''
 output apimGatewayHostname string = '${apimServiceName}.azure-api.net'
+output apimSubscriptionKey string = apimFoundrySubscription.listSecrets(apimFoundrySubscription.apiVersion).primaryKey
+output apimApiPath string = apimOpenAiApi.properties.path
 
 output privateDnsZoneIds object = scZoneIdMap

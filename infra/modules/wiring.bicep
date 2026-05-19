@@ -69,6 +69,13 @@ param weStorageAccountName string
 @description('APIM private gateway hostname for the Foundry connection target.')
 param apimGatewayHostname string
 
+@description('APIM API path (e.g., openai). Appended to gateway hostname in the connection target.')
+param apimApiPath string
+
+@description('APIM subscription key for ApiKey auth on the Foundry connection.')
+@secure()
+param apimSubscriptionKey string
+
 @description('Model deployment names — surfaced in the Foundry connection metadata for static discovery.')
 param modelDeploymentNames array
 
@@ -178,6 +185,8 @@ module foundryConnection 'foundry-connection.bicep' = {
     weFoundryProjectName: weFoundryProjectName
     connectionName: 'apim-byom'
     apimGatewayHostname: apimGatewayHostname
+    apimApiPath: apimApiPath
+    apimSubscriptionKey: apimSubscriptionKey
     modelDeployments: modelDeployments
     urlPathStyle: urlPathStyle
   }

@@ -482,6 +482,8 @@ module wiring 'modules/wiring.bicep' = {
     weStorageAccountName: weAgentPlane.outputs.storageAccountName
 
     apimGatewayHostname: scModelPlane.outputs.apimGatewayHostname
+    apimApiPath: scModelPlane.outputs.apimApiPath
+    apimSubscriptionKey: scModelPlane.outputs.apimSubscriptionKey
     modelDeploymentNames: scModelPlane.outputs.modelDeploymentNames
     modelDeployments: modelDeploymentsArray
     urlPathStyle: urlPathStyle

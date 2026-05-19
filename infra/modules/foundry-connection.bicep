@@ -18,8 +18,11 @@
 //
 // Connection schema follows the verified-working shape from
 // microsoft-foundry/foundry-samples 01-connections/apim — specifically:
-//   - authType: 'ProjectManagedIdentity' (NOT legacy 'AAD')
-//   - audience at properties.audience (NOT in metadata)
+//   - authType: 'ApiKey' for private VNet standard agents (AAD is
+//     internally mapped to ProjectManagedIdentity by the runtime, which
+//     is rejected on private VNet setups)
+//   - target MUST include the APIM API path (e.g. /openai) — without it
+//     the Responses API returns 'Connection not found'
 //   - metadata.models: JSON-stringified array with full model properties
 //   - metadata.deploymentInPath: 'true' for AOAI-shape backends
 //   - metadata.inferenceAPIVersion: GA AOAI API version
@@ -41,6 +44,13 @@ param connectionName string = 'apim-byom'
 
 @description('APIM private gateway hostname (e.g., my-apim.azure-api.net).')
 param apimGatewayHostname string
+
+@description('APIM API path (e.g., openai). Appended to the gateway hostname in the connection target. Must match the APIM API resource path property.')
+param apimApiPath string = 'openai'
+
+@description('APIM subscription key for ApiKey auth. Required — the Responses API on private VNet standard agents only supports ApiKey, not AAD/PMI.')
+@secure()
+param apimSubscriptionKey string
 
 @description('Full model deployment specs — needed to build the JSON-stringified models metadata with name, format, version, publisher.')
 param modelDeployments array
@@ -75,12 +85,13 @@ resource connection 'Microsoft.CognitiveServices/accounts/projects/connections@2
   parent: weProject
   name: connectionName
   properties: {
-    authType: 'AAD'
+    authType: 'ApiKey'
     category: 'ApiManagement'
-    target: 'https://${apimGatewayHostname}'
+    target: 'https://${apimGatewayHostname}/${apimApiPath}'
     isSharedToAll: false
-    audience: 'https://cognitiveservices.azure.com'
-    credentials: {}
+    credentials: {
+      key: apimSubscriptionKey
+    }
     metadata: {
       deploymentInPath: urlPathStyle == 'aoai' ? 'true' : 'false'
       inferenceAPIVersion: '2024-10-21'
