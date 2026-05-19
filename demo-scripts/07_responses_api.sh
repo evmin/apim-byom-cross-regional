@@ -54,11 +54,11 @@ cred = ManagedIdentityCredential(client_id=client_id) if client_id else ManagedI
 print(f"[remote] creating AIProjectClient(endpoint={endpoint})...")
 project = AIProjectClient(endpoint=endpoint, credential=cred)
 
-print("[remote] getting OpenAI client...")
+# --- Test 1: Pattern A — Raw Responses API with conn/dep model string ---
+# This is the simplest v2 pattern from foundry-cross-resource skill §7.1
+print(f"\n[remote] TEST 1 (Pattern A): oai.responses.create(model='{model_ref}')")
 oai = project.get_openai_client()
-
-# --- Test 1: Responses API with conn/dep model string ---
-print(f"\n[remote] TEST 1: oai.responses.create(model='{model_ref}', ...)")
+print(f"[remote]   base_url: {oai.base_url}")
 try:
     t0 = time.monotonic()
     resp = oai.responses.create(
@@ -68,36 +68,51 @@ try:
     )
     elapsed = (time.monotonic() - t0) * 1000
     text = resp.output_text if hasattr(resp, "output_text") else str(resp)
-    print(f"[remote] TEST 1 RESULT: HTTP 200 in {elapsed:.0f}ms")
-    print(f"[remote] output_text = {text!r}")
-    if "PONG" in text.upper():
-        print("[remote] TEST 1: PASS — Responses API routes conn/dep through APIM ✅")
-    else:
-        print(f"[remote] TEST 1: PASS (200 OK) but unexpected reply: {text!r}")
+    print(f"[remote]   PASS in {elapsed:.0f}ms — output: {text!r}")
 except Exception as exc:
     elapsed = (time.monotonic() - t0) * 1000
-    print(f"[remote] TEST 1: FAIL in {elapsed:.0f}ms — {exc}", file=sys.stderr)
-    # Don't exit yet — try test 2
+    print(f"[remote]   FAIL in {elapsed:.0f}ms — {exc}")
 
-# --- Test 2: chat.completions with conn/dep (expected 404) ---
-print(f"\n[remote] TEST 2: oai.chat.completions.create(model='{model_ref}', ...) [expected 404]")
+# --- Test 2: Pattern C — Refreshed-preview hosted-agent client ---
+# Uses get_openai_client(agent_name=...) to bind to the existing prompt agent
+# created by Stage 3 (demo-cross-region-agent). This is the v2 way to invoke
+# a prompt agent via the Responses API.
+agent_name = "demo-cross-region-agent"
+print(f"\n[remote] TEST 2 (Pattern C): get_openai_client(agent_name='{agent_name}')")
+try:
+    project2 = AIProjectClient(endpoint=endpoint, credential=cred, allow_preview=True)
+    oai2 = project2.get_openai_client(agent_name=agent_name)
+    print(f"[remote]   base_url: {oai2.base_url}")
+    t0 = time.monotonic()
+    resp2 = oai2.responses.create(
+        input="What is 2+2? Reply with the number only.",
+        max_output_tokens=32,
+    )
+    elapsed = (time.monotonic() - t0) * 1000
+    text = resp2.output_text if hasattr(resp2, "output_text") else str(resp2)
+    print(f"[remote]   PASS in {elapsed:.0f}ms — output: {text!r}")
+except Exception as exc:
+    elapsed = (time.monotonic() - t0) * 1000
+    print(f"[remote]   FAIL in {elapsed:.0f}ms — {exc}")
+
+# --- Test 3: Negative — chat.completions with conn/dep (expected 404) ---
+print(f"\n[remote] TEST 3 (Negative): chat.completions.create(model='{model_ref}') [expected 404]")
 try:
     t0 = time.monotonic()
-    resp2 = oai.chat.completions.create(
+    resp3 = oai.chat.completions.create(
         model=model_ref,
         messages=[{"role": "user", "content": "Reply OK"}],
         max_tokens=16,
     )
     elapsed = (time.monotonic() - t0) * 1000
-    content = resp2.choices[0].message.content if resp2.choices else "(empty)"
-    print(f"[remote] TEST 2: UNEXPECTED 200 in {elapsed:.0f}ms — reply={content!r}")
+    content = resp3.choices[0].message.content if resp3.choices else "(empty)"
+    print(f"[remote]   UNEXPECTED 200 in {elapsed:.0f}ms — reply={content!r}")
 except Exception as exc:
     elapsed = (time.monotonic() - t0) * 1000
-    print(f"[remote] TEST 2: {exc}")
     if "404" in str(exc) or "NotFound" in str(exc) or "DeploymentNotFound" in str(exc):
-        print(f"[remote] TEST 2: EXPECTED — chat.completions does not route conn/dep ✅")
+        print(f"[remote]   EXPECTED 404 — chat.completions does not route conn/dep")
     else:
-        print(f"[remote] TEST 2: FAIL (unexpected error) in {elapsed:.0f}ms", file=sys.stderr)
+        print(f"[remote]   FAIL in {elapsed:.0f}ms — {exc}")
 
 print("\n[remote] done")
 PYEOF
