@@ -8,83 +8,45 @@ Crystal-clear, laconic. Each script does ONE thing, prints a banner, ends in
 ```
 STAGE 1: Here is the model deployed in Sweden Central.
 STAGE 2: Here is APIM in Sweden Central, fronting that model.
-STAGE 3: Here is the Foundry connection `apim-byom` in Switzerland North
-         pointing at APIM in Sweden Central — and the prompt agent
-         configured to use it.
-STAGE 4: Call the cross-region bridge — caller code references the Swiss
-         project's `apim-byom` connection; the actual chat completion comes
-         back via APIM in Sweden Central and the AOAI deployment behind it.
-         Also: replay the agent's instructions through the same bridge to
-         prove the agent's stored config produces real model output.
-         Also (optional): show the agents-runtime attempt + its server-side
-         failure (Microsoft platform issue, observed across all tried
-         regions in this deploy).
+STAGE 3: Hit the Switzerland North Foundry project's Responses API with
+         model = `apim-byom/gpt-5.4-nano`. Foundry resolves the `apim-byom`
+         connection, calls APIM in Sweden Central, which calls the AOAI
+         deployment behind it. The reply comes back end-to-end. The
+         cross-region routing is invisible to the caller.
 ```
 
 ## Prerequisites
 
 - `azd env select fdev` — the demo reads values via `azd env get-values`.
 - `az login` — the operator's account is needed only for the control-plane
-  reads in stages 1–3 (deployments, APIM service, connection definition).
+  reads in stages 1–2 (model deployment, APIM service).
   All data-plane calls run on the jumpbox via its UAMI.
 - The jumpbox UAMI must be (already is, per the 001 IaC) granted:
-  - **Azure AI Developer** on the agent project (Stages 3, 4, 5, 6),
+  - **Azure AI Developer** on the agent project (Stage 3),
   - **Cognitive Services User** on the SC AOAI account (for the APIM bridge),
-  - **oid in the APIM `validate-azure-ad-token` allowlist** (Stages 4, 5).
+  - **oid in the APIM `validate-azure-ad-token` allowlist** (Stage 3 fall-through path).
 - Local SSH private key matching `JUMPBOX_SSH_PUBLIC_KEY` available at
   `~/.ssh/mreg-jumpbox` (default; override with `JUMPBOX_SSH_PRIVATE_KEY`).
 
 ## Run order
 
 ```bash
-# happy path (~2-3 min cold; most time is Bastion tunnel setup ~30s per
-# jumpbox-touching stage: 03, 04, 05)
+# happy path (~1-2 min cold; most time is the single Bastion tunnel setup ≈30s)
 bash demo-scripts/run-all.sh
-
-# honest mode (adds Stage 6 — runtime attempt that fails server-side)
-INCLUDE_RUNTIME_ATTEMPT=1 bash demo-scripts/run-all.sh
 
 # individual stages (each is standalone; just `source ./00_env.sh` at top)
 bash demo-scripts/01_sc_model.sh
 bash demo-scripts/02_sc_apim.sh
-bash demo-scripts/03_sn_connection_and_agent.sh
-bash demo-scripts/04_call_sn_routes_to_sc.sh
-bash demo-scripts/05_replay_agent.sh
-INCLUDE_RUNTIME_ATTEMPT=1 bash demo-scripts/06_attempt_runtime.sh
+bash demo-scripts/03_responses_api.sh
 ```
 
 ## What each script proves
 
-| Stage | Script                              | Proof |
-|------:|-------------------------------------|-------|
-| 1     | `01_sc_model.sh`                    | SC AOAI/Foundry account in `swedencentral`; `gpt-5.4-nano` deployment is live. Pure `az` from the Mac. |
-| 2     | `02_sc_apim.sh`                     | APIM service in SC with `publicNetworkAccess=Disabled`; `openai` API present; service-level policy carries `validate-azure-ad-token` + backend rewrite. Pure `az` from the Mac. |
-| 3     | `03_sn_connection_and_agent.sh`     | SN Foundry account live in `switzerlandnorth`; connection `apim-byom` (`type=ApiManagement`, `target=https://<apim-sc>.azure-api.net`); demo agent `demo-cross-region-agent` with `model: apim-byom/gpt-5.4-nano` (created on demand). Uses jumpbox for the SN data-plane `/assistants` call. |
-| 4     | `04_call_sn_routes_to_sc.sh`        | The cross-region bridge actually works: a real OpenAI-shape chat completion comes back when the upstream call to APIM (SC) is issued. Step 1 honestly attempts the SN REST endpoint (404 — see drift note below); step 2 issues the bridged call. |
-| 4'    | `05_replay_agent.sh`                | The agent's stored `instructions` pulled from the SN project produce a model reply that honours them (`What is 2+2?` → `4`) through the same bridge. |
-| 4''   | `06_attempt_runtime.sh` (opt-in)    | The Foundry agents runtime `POST /threads/<id>/runs` reaches a terminal `failed` status with `last_error.code=server_error`. Failing IS the expected outcome (exit 0); the script is opt-in via `INCLUDE_RUNTIME_ATTEMPT=1`. |
-
-## Drift note (Stage 4 / 5)
-
-The plan originally specified that Stage 4 would `POST` directly to the SN
-project's `/chat/completions?api-version=v1` endpoint with
-`model: apim-byom/gpt-5.4-nano` and get a routed reply back. **Empirically
-on this deploy** that REST surface returns `404 NotFound` for
-connection-prefixed model names — the platform only resolves
-`<connection>/<deployment>` model strings inside the **agents runtime**
-(POST `/threads/<id>/runs`, which is broken; see Stage 6). The
-project-level `/chat/completions` and `/openai/v1/chat/completions`
-surfaces only see **local** deployments on the SN account.
-
-So Stages 4 and 5 issue the bridged call directly to APIM (Sweden) — which
-is exactly the request the agents runtime would make upstream after
-resolving the `apim-byom` connection. The audience sees:
-
-- The Swiss project endpoint where the connection + agent definition live
-  (printed in banners), and
-- The APIM (Sweden) URL where the real chat completion is served from.
-
-Both are accurate; both are visible; nothing is hidden behind an SDK.
+| Stage | Script                       | Proof |
+|------:|------------------------------|-------|
+| 1     | `01_sc_model.sh`             | SC AOAI/Foundry account live in `swedencentral`; `gpt-5.4-nano` deployment is live. Pure `az` from the Mac. |
+| 2     | `02_sc_apim.sh`              | APIM service in SC with `publicNetworkAccess=Disabled`; `openai` API present; service-level policy carries `validate-azure-ad-token` + backend rewrite. Pure `az` from the Mac. |
+| 3     | `03_responses_api.sh`        | End-to-end: from the jumpbox UAMI inside the agent VNet, the SN project's Responses API resolves `apim-byom/gpt-5.4-nano` and returns a real reply. Runs two sub-tests, both must return `'PONG'`: (a) v2 `PromptAgentDefinition` + Responses API, (b) raw `oai.responses.create(model=…)`. |
 
 ## Expected output
 
@@ -117,161 +79,61 @@ Name    Path    ServiceUrl
 ------  ------  ----------------------------------------------------
 openai  openai  https://mregfdevfdryscqx3thf.openai.azure.com/openai
 
-Name           Method    UrlTemplate
--------------  --------  -------------
-catchall-get   GET       /*
-catchall-post  POST      /*
-
 --- inbound policy excerpt (first 30 lines, service-level) ---
 <policies>
   <inbound>
-    <validate-azure-ad-token tenant-id="…" header-name="Authorization" failed-validation-httpcode="401" …>
-      <audiences>
-        <audience>https://cognitiveservices.azure.com/</audience>
-        <audience>https://ai.azure.com</audience>
-      </audiences>
-      <required-claims>
-        <claim name="oid" match="any">
-          <value>…agent project MI…</value>
-          <value>…APIM MI…</value>
-          <value>…jumpbox UAMI…</value>
-        </claim>
-      </required-claims>
-    </validate-azure-ad-token>
+    <choose>
+      <when condition='@(... != "{{apim-byom-key}}")'>
+        <validate-azure-ad-token … >
+          …
+        </validate-azure-ad-token>
+      </when>
+    </choose>
+    <set-header name="api-key" exists-action="delete" />
+    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
     <set-backend-service base-url="https://…/openai" />
     <authentication-managed-identity resource="https://cognitiveservices.azure.com" … />
-    <set-header name="Authorization" exists-action="override">
-      <value>@("Bearer " + (string)context.Variables["msi-token"])</value>
-    </set-header>
+    …
   </inbound>
-  …
 </policies>
 
 PASS — 02_sc_apim
 ```
 
-### `03_sn_connection_and_agent.sh`
+### `03_responses_api.sh`
 
 ```
-==== STAGE 3: SN connection + agent ====
-…
-{
-  "kind": "AIServices",
-  "location": "switzerlandnorth",
-  "name": "mregfdevfdrychnl33kar",
-  "publicNetworkAccess": "Disabled"
-}
-{
-  "name": "apim-byom",
-  "category": "ApiManagement",
-  "target": "https://mreg-fdev-apim-sc-qx3thf.azure-api.net",
-  "isDefault": null,
-  "authType": "AAD"
-}
-…
-[remote] agent 'demo-cross-region-agent' not found — POST /assistants to create it
-{
-  "id": "asst_…",
-  "name": "demo-cross-region-agent",
-  "instructions": "You are a helpful assistant. Reply concisely.",
-  "model": "apim-byom/gpt-5.4-nano",
-  "created_at": …
-}
-PASS — 03_sn_connection_and_agent
-```
+==== STAGE 3: end-to-end via Responses API (v2) — conn/dep routing through APIM ====
+endpoint    : https://mregfdevfdrychnl33kar.services.ai.azure.com/api/projects/agent-project
+model_ref   : apim-byom/gpt-5.4-nano
+apim target : https://mreg-fdev-apim-sc-qx3thf.azure-api.net
 
-### `04_call_sn_routes_to_sc.sh`
+[remote] endpoint   = https://mregfdevfdrychnl33kar.services.ai.azure.com/api/projects/agent-project
+[remote] model_ref  = apim-byom/gpt-5.4-nano
+[remote] azure-ai-projects version: 2.1.0
 
-```
-==== STAGE 4: cross-region bridge (SN project 'apim-byom' → APIM SC → AOAI SC) ====
-…
-[remote] [step 1] POST https://mregfdevfdrychnl33kar.services.ai.azure.com/api/projects/agent-project/chat/completions?api-version=v1
-[remote] [step 1] HTTP=404
-{"error":{"code":"NotFound","message":"Resource not found"}}
+[remote] TEST 1: v2 prompt agent (PromptAgentDefinition + Responses API)
+[remote]   agent created: name=v2-byom-probe version=1
+[remote]   conversation: conv_…
+[remote]   PASS in ~3700ms — output: 'PONG'
 
-[remote] [step 2] POST https://mreg-fdev-apim-sc-qx3thf.azure-api.net/openai/deployments/gpt-5.4-nano/chat/completions?api-version=2024-10-21
-[remote] [step 2] HTTP=200 elapsed_ms=~1500
-[remote] response.id       = chatcmpl-…
-[remote] response.content  = OK
-[remote] response.usage    = {"completion_tokens":5,"prompt_tokens":8,"total_tokens":13,…}
-[remote] wall-time         = ~1500 ms
+[remote] TEST 2: Raw responses.create(model='apim-byom/gpt-5.4-nano')
+[remote]   PASS in ~2900ms — output: 'PONG'
 
-PASS — 04_call_sn_routes_to_sc
-```
-
-### `05_replay_agent.sh`
-
-```
-==== STAGE 4 (replay): agent config end-to-end ====
-…
-[remote] pulled system prompt: You are a helpful assistant. Reply concisely.
-[remote] user prompt        : What is 2+2? Reply with the number only.
-[remote] POST https://mreg-fdev-apim-sc-qx3thf.azure-api.net/openai/deployments/gpt-5.4-nano/chat/completions?api-version=2024-10-21
-[remote] reply: 4
-[remote] OK — reply matches ^\s*4\b
-
-PASS — 05_replay_agent
-```
-
-### `06_attempt_runtime.sh` (opt-in)
-
-```
-==== STAGE 4 (honest): runtime attempt — expected to fail server-side ====
-…
-[remote] thread id: thread_…
-[remote] POST /threads/.../messages …
-[remote] POST /threads/.../runs …
-[remote] run id: run_…
-[remote] poll #1 — status=failed
-[remote] terminal status: failed
-[remote] last_error:
-{
-  "code": "server_error",
-  "message": "Sorry, something went wrong."
-}
-───────────────────────────────────────────────────────
-The Foundry agents-runtime path (/threads/<id>/runs) is
-server-side broken in this environment (observed across
-all tried regions: NEU/WE/EUS2/FRC/CHN; no upstream APIM
-traffic during failed runs). The working paths shown in
-scripts 04 and 05 are unaffected.
-───────────────────────────────────────────────────────
-PASS — 06_attempt_runtime (failure is the expected outcome)
+PASS — 03_responses_api
 ```
 
 ### `run-all.sh` summary
 
-Captured end-to-end against `fdev` (happy path; tunnel cache warm):
-
 ```
-======================================================================
-=== summary                                                            ===
-======================================================================
-
 STAGE                                STATUS       WALL
 ------------------------------------ ------------ ----
 01_sc_model.sh                       PASS         5s
 02_sc_apim.sh                        PASS         8s
-03_sn_connection_and_agent.sh        PASS         8s
-04_call_sn_routes_to_sc.sh           PASS         5s
-05_replay_agent.sh                   PASS         5s
+03_responses_api.sh                  PASS         8s
 
 ALL STAGES PASS
 ```
-
-Overall wall-time: **31 s** (well under the 90 s target). With cold
-Bastion tunnels expect roughly 30 s × the three jumpbox stages instead
-of the single-digit per-stage numbers above.
-
-With `INCLUDE_RUNTIME_ATTEMPT=1` the summary adds one row:
-
-```
-06_attempt_runtime.sh                PASS         10s
-```
-
-Stage 6 prints `status: failed` + `last_error.code: server_error` and
-exits 0 — that is the documented, expected outcome of the runtime path
-in this environment.
 
 ## When something fails
 
@@ -280,31 +142,21 @@ in this environment.
   Confirm `azd env get-values | grep AZURE_LOCATION` and the model RG name.
 - **`02_sc_apim.sh`** — `publicNetworkAccess` may flip to `Enabled` if
   `hooks/postprovision-finalize.sh` hasn't run. Re-run it.
-- **`03_sn_connection_and_agent.sh`** — first failure mode is the SSH key
-  not being found (`jumpbox-run: SSH private key not found at …`); next is
-  Bastion tunnel timeout (re-run; the jumpbox cold-start can be slow). If
-  the agent creation returns 4xx, inspect the response body — usually a
-  missing scope on the UAMI (Azure AI Developer on the project).
-- **`04_call_sn_routes_to_sc.sh`** — step 1's 404 is **expected and not a
-  failure**. The failure mode is step 2 returning ≠ 200. Most common cause:
-  the jumpbox UAMI's oid is not in the APIM allowlist (re-deploy with the
-  current `JUMPBOX_UAMI_PRINCIPAL_ID` in `infra/main.bicep`); also possible
-  that APIM was re-deployed and lost its private endpoint DNS link.
-  Inspect with `scripts/jumpbox-run.sh "dig $APIM_GATEWAY_HOSTNAME"`.
-- **`05_replay_agent.sh`** — `agent 'demo-cross-region-agent' not found`
-  means Stage 3 hasn't been run. The model regex failure (`expected reply
-  starts with '4'`) is essentially impossible on `gpt-5.4-nano` with this
-  prompt; if it ever happens, capture the reply for the model team.
-- **`06_attempt_runtime.sh`** — exit non-zero only if the script can't even
-  reach a terminal `status` (network/auth glitch before the broken runtime
-  kicks in). Re-run; if it persists, run `scripts/jumpbox-smoke.sh` from
-  the 001 IaC to confirm Bastion, MI, and DNS are all healthy.
+- **`03_responses_api.sh`** — first failure mode is the SSH key not being
+  found (`jumpbox-run: SSH private key not found at …`); next is Bastion
+  tunnel timeout (re-run; the jumpbox cold-start can be slow). If TEST 1
+  fails with `Connection 'apim-byom' not found`, verify the Foundry
+  connection target ends in `/openai` and `authType=ApiKey` is set
+  (see `infra/modules/foundry-connection.bicep`). If TEST 2 fails with a
+  401 from APIM, the jumpbox UAMI's oid may not be in the APIM allowlist
+  (re-deploy with the current `JUMPBOX_UAMI_PRINCIPAL_ID` in
+  `infra/main.bicep`).
 
 ## See also
 
 - `005_architecture.md` — full architecture diagrams (don't duplicate them
   here).
 - `scripts/jumpbox/` — the deeper validation suite (DNS audit, posture
-  audit, SDK-runtime smoke, direct-inference smoke). These run from inside
+  audit, AAD-reject smoke, direct-inference smoke). These run from inside
   the agent VNet and are wired into `azd up` via
   `hooks/postprovision-smoke.sh`.

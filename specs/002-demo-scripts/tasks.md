@@ -2,6 +2,18 @@
 description: "Tasks — demo-scripts/: crystal-clear cross-region demo suite"
 ---
 
+> **Historical document.** This spec was authored when the v2 BYOM end-to-end
+> path was not yet operational, so it included v1-Assistants-based scripts
+> (`03_sn_connection_and_agent.sh`, `05_replay_agent.sh`, `06_attempt_runtime.sh`)
+> and the `INCLUDE_RUNTIME_ATTEMPT` opt-in for the broken Foundry agents
+> runtime path. Once v2 PromptAgents started working via the APIM BYOM
+> connection (see `infra/modules/foundry-connection.bicep`,
+> `infra/modules/apim-policy.bicep`, `infra/policies/inbound.xml`), all v1
+> code paths were removed and the demo collapsed to three stages:
+> `01_sc_model.sh` → `02_sc_apim.sh` → `03_responses_api.sh` (the v2
+> Responses API end-to-end proof, previously numbered `07`). The task list
+> below is kept for traceability — do not treat it as a current spec.
+
 # Tasks: `demo-scripts/` — Crystal-clear cross-region demo (Switzerland North → APIM SC → AOAI SC)
 
 **Feature directory**: `specs/002-demo-scripts/`

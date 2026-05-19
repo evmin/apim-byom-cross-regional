@@ -72,7 +72,7 @@ param weFoundryAccountName string
 @description('Foundry project name (used to compose the agent project endpoint in cloud-init).')
 param weFoundryProjectName string
 
-@description('Foundry connection name (e.g. apim-byom) — passed into smoke-sdk.py.')
+@description('Foundry connection name (e.g. apim-byom) — surfaced into cloud-init env for the on-VM smokes.')
 param foundryConnectionName string
 
 @description('APIM private gateway hostname (e.g. <apim>.azure-api.net).')
@@ -105,8 +105,8 @@ var bastionPipName = '${bastionName}-pip'
 var uamiName      = '${vmName}-uami-${uniq}'
 var osDiskName    = '${vmName}-osdisk'
 
-// Compose the agent project endpoint inline so cloud-init can hand-off
-// to smoke-sdk.py without a second `azd env get-values` pass.
+// Compose the agent project endpoint inline so cloud-init can hand it off
+// to the on-VM smoke scripts without a second `azd env get-values` pass.
 var agentProjectEndpoint = 'https://${weFoundryAccountName}.services.ai.azure.com/api/projects/${weFoundryProjectName}'
 
 // =============================================================================
@@ -234,31 +234,26 @@ write_files:
     owner: root:root
     encoding: b64
     content: {8}
-  - path: /opt/mreg-validate/smoke-sdk.py
-    permissions: '0755'
-    owner: root:root
-    encoding: b64
-    content: {9}
   - path: /opt/mreg-validate/smoke-reject.sh
     permissions: '0755'
     owner: root:root
     encoding: b64
-    content: {10}
+    content: {9}
   - path: /opt/mreg-validate/smoke-dns.sh
     permissions: '0755'
     owner: root:root
     encoding: b64
-    content: {11}
+    content: {10}
   - path: /opt/mreg-validate/posture-from-vnet.sh
     permissions: '0755'
     owner: root:root
     encoding: b64
-    content: {12}
+    content: {11}
   - path: /opt/mreg-validate/smoke-bridge.sh
     permissions: '0755'
     owner: root:root
     encoding: b64
-    content: {13}
+    content: {12}
 runcmd:
   - [ /opt/mreg-validate/bootstrap.sh ]
 ''',
@@ -271,7 +266,6 @@ runcmd:
   modelResourceGroupName,
   uami.outputs.clientId,
   base64(loadTextContent('../../scripts/jumpbox/bootstrap.sh')),
-  base64(loadTextContent('../../scripts/jumpbox/smoke-sdk.py')),
   base64(loadTextContent('../../scripts/jumpbox/smoke-reject.sh')),
   base64(loadTextContent('../../scripts/jumpbox/smoke-dns.sh')),
   base64(loadTextContent('../../scripts/jumpbox/posture-from-vnet.sh')),
