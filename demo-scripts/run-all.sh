@@ -2,10 +2,9 @@
 # =============================================================================
 # demo-scripts/run-all.sh — run the full demo end-to-end.
 # =============================================================================
-# Happy path:     ./run-all.sh             (runs 01..05; ~2-3 min cold cache
+# Happy path:     ./run-all.sh             (runs 01..03; ~1-2 min cold cache
 #                                            due to Bastion tunnel setup ≈30s
-#                                            per jumpbox stage)
-# Honest mode:    INCLUDE_RUNTIME_ATTEMPT=1 ./run-all.sh   (adds Stage 6)
+#                                            for the jumpbox-touching stage)
 #
 # Each stage prints its own banner and PASS/FAIL line. This wrapper adds a
 # bold ASCII banner between stages and prints a final summary table.
@@ -26,17 +25,12 @@ bold_banner() {
   printf   '\033[1m======================================================================\033[0m\n\n'
 }
 
-# Stage script list, in order. Stage 6 is appended conditionally below.
+# Stage script list, in order.
 STAGES=(
   "01_sc_model.sh"
   "02_sc_apim.sh"
-  "03_sn_connection_and_agent.sh"
-  "04_call_sn_routes_to_sc.sh"
-  "05_replay_agent.sh"
+  "03_responses_api.sh"
 )
-if [[ "${INCLUDE_RUNTIME_ATTEMPT:-0}" == "1" ]]; then
-  STAGES+=("06_attempt_runtime.sh")
-fi
 
 declare -a RESULT_NAME RESULT_STATUS RESULT_WALL
 
@@ -58,8 +52,6 @@ for s in "${STAGES[@]}"; do
       OVERALL=$RC
       ;;
   esac
-  # 06 prints SKIP itself on rc=0 when opt-out; the rc=0 case above still
-  # records PASS for it (since SKIP-with-rc-0 is intentional behaviour).
   RESULT_NAME+=("$s")
   RESULT_STATUS+=("$STATUS")
   RESULT_WALL+=("${WALL}s")

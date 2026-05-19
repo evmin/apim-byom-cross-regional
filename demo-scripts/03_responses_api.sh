@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # =============================================================================
-# demo-scripts/07_responses_api.sh — STAGE 7: Responses API (v2) test.
+# demo-scripts/03_responses_api.sh — STAGE 3: end-to-end via Responses API (v2).
 # =============================================================================
-# Tests whether the Foundry Responses API (refreshed preview, v2) can route
-# the conn/dep model string through the APIM connection — unlike the
-# Assistants v1 runtime which fails server-side.
+# Proves the full cross-region path works:
+#   Switzerland North Foundry project → `apim-byom` connection
+#   → APIM in Sweden Central → AOAI deployment in Sweden Central → reply.
+#
+# Uses two v2 surfaces (both must return "PONG"):
+#   TEST 1: PromptAgentDefinition + Responses API (the canonical v2 agent path)
+#   TEST 2: Raw oai.responses.create(model="apim-byom/gpt-5.4-nano")
 #
 # Per the foundry-cross-resource skill (verified 2026-04-23), conn/dep routing
-# only works on oai.responses.create(), not on chat.completions or Assistants.
+# only works on oai.responses.create() — not on chat.completions.
 # =============================================================================
 
 set -euo pipefail
@@ -17,7 +21,7 @@ cd "$(dirname "$0")"
 # shellcheck source=./00_env.sh
 source ./00_env.sh
 
-printf '\n==== STAGE 7: Responses API (v2) — conn/dep routing via APIM ====\n'
+printf '\n==== STAGE 3: end-to-end via Responses API (v2) — conn/dep routing through APIM ====\n'
 echo "endpoint    : $SN_FOUNDRY_PROJECT_ENDPOINT"
 echo "model_ref   : $MODEL_REF"
 echo "apim target : https://$APIM_GATEWAY_HOSTNAME"
@@ -124,9 +128,9 @@ REMOTE_EOF
 
 REMOTE_B64=$(printf '%s' "$REMOTE" | base64 | tr -d '\n')
 if ! ../scripts/jumpbox-run.sh "echo $REMOTE_B64 | base64 -d | bash"; then
-  echo "FAIL — 07_responses_api: remote script errored" >&2
+  echo "FAIL — 03_responses_api: remote script errored" >&2
   exit 1
 fi
 
 echo
-echo "PASS — 07_responses_api"
+echo "PASS — 03_responses_api"

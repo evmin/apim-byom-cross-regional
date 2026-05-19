@@ -8,7 +8,7 @@
 #
 # Usage:
 #   scripts/jumpbox-run.sh "/opt/mreg-validate/smoke-dns.sh"
-#   scripts/jumpbox-run.sh "source /etc/profile.d/mreg-validate.sh && python3 /opt/mreg-validate/smoke-sdk.py"
+#   scripts/jumpbox-run.sh "/opt/mreg-validate/smoke-bridge.sh"
 #
 # Env:
 #   JUMPBOX_SSH_PRIVATE_KEY=~/.ssh/mreg-jumpbox

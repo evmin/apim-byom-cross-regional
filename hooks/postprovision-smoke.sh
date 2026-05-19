@@ -10,7 +10,7 @@
 #
 # This wrapper simply delegates to `scripts/jumpbox-smoke.sh`, which uses
 # the always-on demo jumpbox (provisioned by infra/modules/demo-jumpbox.bicep)
-# to run smoke-sdk.py, smoke-reject.sh, smoke-dns.sh, and posture-from-vnet.sh.
+# to run smoke-dns.sh, smoke-reject.sh, smoke-bridge.sh, and posture-from-vnet.sh.
 #
 # Gating:
 #   - Respects ENABLE_SMOKE_VALIDATION (default: true). Skipped on `false`.

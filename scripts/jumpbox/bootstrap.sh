@@ -10,7 +10,7 @@
 #   - azure-cli (apt repo + pip-installable Azure SDKs via system python)
 #   - python3-venv + dnsutils + jq + curl
 #   - python virtualenv at /opt/mreg-validate/venv with
-#       azure-ai-projects, azure-ai-agents, azure-identity, openai, httpx
+#       azure-ai-projects, azure-identity, openai, httpx
 #
 # Intended target: Ubuntu 22.04 LTS jammy on the demo jumpbox.
 # =============================================================================
@@ -69,7 +69,6 @@ source "${VENV_DIR}/bin/activate"
 pip install --quiet --upgrade pip
 pip install --quiet \
   azure-ai-projects \
-  azure-ai-agents \
   azure-identity \
   openai \
   httpx

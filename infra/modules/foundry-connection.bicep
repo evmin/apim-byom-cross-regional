@@ -83,11 +83,10 @@ var modelsJsonString = '[${join(modelsJsonEntries, ',')}]'
 // APIM. See PR #1 commit 95342e0 (root cause #1).
 //
 // authType MUST be `ApiKey` (with a credential value). With `AAD` the
-// Responses API also returns `400 "Connection not found"` — the resolution
-// path differs between v1 (Assistants) and v2 (Responses) runtimes. The key
-// value is shared with the APIM service-level policy which checks the
-// `api-key` request header before falling through to AAD validation, so the
-// jumpbox UAMI smoke-bridge keeps working without sending a key.
+// Responses API returns `400 "Connection not found"`. The key value is
+// shared with the APIM service-level policy which checks the `api-key`
+// request header before falling through to AAD validation, so the jumpbox
+// UAMI smoke-bridge keeps working without sending a key.
 resource connection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
   parent: weProject
   name: connectionName

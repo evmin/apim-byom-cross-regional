@@ -14,14 +14,9 @@
 #   4. smoke-bridge            — spec-aligned BYOM cross-region path:
 #                                 jumpbox UAMI → APIM PE → SC AOAI → reply.
 #                                 THIS IS THE PRIMARY DEMO PATH.
-#   5. smoke-sdk               — Foundry agents-runtime path. Currently
-#                                 EXPECTED_FAIL_PLATFORM_ISSUE (see header on
-#                                 scripts/jumpbox/smoke-sdk.py). Tolerated by
-#                                 this wrapper — does NOT fail the suite.
-#   6. posture-from-vnet       — every solution data-plane has Disabled public access.
+#   5. posture-from-vnet       — every solution data-plane has Disabled public access.
 #
-# Wall-time guard: 10 minutes total (smoke-sdk waits ~3s+retries even when failing,
-# and the agents-runtime path occasionally pauses longer).
+# Wall-time guard: 10 minutes total.
 # =============================================================================
 
 set -euo pipefail
@@ -39,7 +34,6 @@ declare -a NAMES=(
   smoke-dns
   smoke-reject
   smoke-bridge
-  smoke-sdk
   posture-from-vnet
 )
 declare -a CMDS=(
@@ -47,15 +41,12 @@ declare -a CMDS=(
   "/opt/mreg-validate/smoke-dns.sh"
   "/opt/mreg-validate/smoke-reject.sh"
   "/opt/mreg-validate/smoke-bridge.sh"
-  "/opt/mreg-validate/venv/bin/python3 /opt/mreg-validate/smoke-sdk.py"
   "/opt/mreg-validate/posture-from-vnet.sh"
 )
 # Sub-checks that are tolerated (failures do NOT fail the overall suite,
-# they show up as EXPECTED_FAIL in the summary). Keep this list as small as
-# possible — every entry here is a known platform limitation.
-declare -A TOLERATED=(
-  [smoke-sdk]=1
-)
+# they show up as EXPECTED_FAIL in the summary). Empty by default — every
+# check listed above is required.
+declare -A TOLERATED=()
 
 declare -a RESULTS=()
 declare -a TAILS=()
