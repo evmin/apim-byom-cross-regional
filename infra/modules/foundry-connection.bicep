@@ -52,6 +52,10 @@ param modelDeployments array
 ])
 param urlPathStyle string
 
+@secure()
+@description('Shared api-key value stored as the connection credential. Validated by the APIM service-level policy. Generated upstream by main.bicep via uniqueString().')
+param apimByomConnectionKey string
+
 // Existing parents — we author the connection as a grandchild of the account.
 resource weAccount 'Microsoft.CognitiveServices/accounts@2025-06-01' existing = {
   name: weFoundryAccountName
@@ -71,16 +75,30 @@ var modelsJsonString = '[${join(modelsJsonEntries, ',')}]'
 
 // Connection schema: verified-working shape from foundry-cross-resource skill
 // (live-verified 2026-04-23 against microsoft-foundry/foundry-samples).
+//
+// IMPORTANT: `target` MUST include the APIM API path suffix (`/openai` — the
+// APIM API `path` literal authored in sc-model-plane.bicep:343). Without the
+// suffix Foundry's Responses API rejects the model reference with
+// `400 "Connection 'apim-byom' not found"` before any request is sent to
+// APIM. See PR #1 commit 95342e0 (root cause #1).
+//
+// authType MUST be `ApiKey` (with a credential value). With `AAD` the
+// Responses API also returns `400 "Connection not found"` — the resolution
+// path differs between v1 (Assistants) and v2 (Responses) runtimes. The key
+// value is shared with the APIM service-level policy which checks the
+// `api-key` request header before falling through to AAD validation, so the
+// jumpbox UAMI smoke-bridge keeps working without sending a key.
 resource connection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {
   parent: weProject
   name: connectionName
   properties: {
-    authType: 'AAD'
+    authType: 'ApiKey'
     category: 'ApiManagement'
-    target: 'https://${apimGatewayHostname}'
+    target: 'https://${apimGatewayHostname}/openai'
     isSharedToAll: false
-    audience: 'https://cognitiveservices.azure.com'
-    credentials: {}
+    credentials: {
+      key: apimByomConnectionKey
+    }
     metadata: {
       deploymentInPath: urlPathStyle == 'aoai' ? 'true' : 'false'
       inferenceAPIVersion: '2024-10-21'

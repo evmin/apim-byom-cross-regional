@@ -36,9 +36,28 @@ param tenantId string
 @description('When true, semantic-cache lookup/store fragments are spliced into the assembled policy.')
 param enableSemanticCache bool
 
+@secure()
+@description('Shared api-key value installed as a secret APIM named value (`apim-byom-key`). The inbound policy compares the request `api-key` header against `{{apim-byom-key}}` and skips AAD validation when it matches. This unblocks Foundry ApiKey-typed connections (v2 Responses API) while preserving the AAD-only path for direct MI callers.')
+param apimByomConnectionKey string
+
 // Existing parent.
 resource apimExisting 'Microsoft.ApiManagement/service@2024-05-01' existing = {
   name: apimServiceName
+}
+
+// APIM named value carrying the apim-byom shared api-key. Stored with
+// `secret: true` so the value is not returned by listValue() and is masked
+// in the portal. The policy references it via the standard `{{name}}` token
+// which APIM resolves at policy execution time (NOT at Bicep deploy time —
+// our Bicep replace() chain does not touch `{{apim-byom-key}}`).
+resource apimByomKeyNamedValue 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
+  parent: apimExisting
+  name: 'apim-byom-key'
+  properties: {
+    displayName: 'apim-byom-key'
+    secret: true
+    value: apimByomConnectionKey
+  }
 }
 
 // Fragment loaders — paths are relative to this .bicep file.
@@ -94,6 +113,9 @@ resource apimPolicy 'Microsoft.ApiManagement/service/policies@2024-05-01' = {
     format: 'xml'
     value: policyXml
   }
+  dependsOn: [
+    apimByomKeyNamedValue  // policy references `{{apim-byom-key}}` — value must exist first
+  ]
 }
 
 output policyId string = apimPolicy.id

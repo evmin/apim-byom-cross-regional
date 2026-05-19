@@ -37,16 +37,17 @@
   elements inside the <inbound> element of the assembled policy document.
 -->
 <fragment>
-    <!-- 1. Auth gate — dual-mode: subscription key (ApiKey connections from Foundry
-             Responses API) OR AAD bearer (MI-based callers like jumpbox UAMI).
-             When APIM has already validated a subscription key (subscriptionRequired=true
-             on the API), context.Subscription is non-null and we skip AAD validation.
-             When no subscription is present (MI-based callers), we fall through to
-             validate-azure-ad-token. This supports both Foundry ApiKey connections
-             (v2 prompt agents via Responses API) and MI-based direct calls (jumpbox
-             smoke scripts). -->
+    <!-- 1. Auth gate — dual-mode: api-key header (Foundry connections with
+             authType=ApiKey) OR AAD bearer (MI-based callers like the jumpbox
+             UAMI). The api-key shared value lives in the APIM named value
+             `apim-byom-key` (set by apim-policy.bicep) and on the Foundry
+             apim-byom connection's `credentials.key`. When the inbound
+             api-key matches we skip AAD validation; otherwise we fall through
+             to validate-azure-ad-token so pure-AAD callers still work.
+             The API itself stays `subscriptionRequired=false` so AAD-only
+             callers reach this policy at all. -->
     <choose>
-        <when condition="@(context.Subscription == null)">
+        <when condition='@(context.Request.Headers.GetValueOrDefault("api-key", "") != "{{apim-byom-key}}")'>
             <validate-azure-ad-token
                 tenant-id="{{TENANT_ID}}"
                 header-name="Authorization"
@@ -62,6 +63,13 @@
             </validate-azure-ad-token>
         </when>
     </choose>
+
+    <!-- 1b. Strip caller-supplied api-key headers before the backend hop so
+             AOAI never sees them. The backend is authenticated below via the
+             APIM system-assigned MI; the api-key was only used as the APIM
+             policy gate. -->
+    <set-header name="api-key" exists-action="delete" />
+    <set-header name="Ocp-Apim-Subscription-Key" exists-action="delete" />
 
     <!-- 2. Backend rewrite to the SC Foundry / AOAI account. -->
     <set-backend-service base-url="{{BACKEND_URL}}" />
