@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# demo-scripts/run-all.sh — run the full demo end-to-end.
+# scripts/demo/run-all.sh — run the full demo end-to-end.
 # =============================================================================
 # Happy path:     ./run-all.sh             (runs 01..03; ~1-2 min cold cache
 #                                            due to Bastion tunnel setup ≈30s

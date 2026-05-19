@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
 #
-# azd project manifest for `001-private-foundry-iac`.
+# azd project manifest for the private Foundry IaC demo.
 #
 # This is an Infrastructure-as-Code feature only — there is no application
 # being built or deployed by azd. Therefore the `services:` block is
@@ -8,12 +8,13 @@
 # provisioning happens via `infra/main.bicep`.
 #
 # Hooks:
-#   - postprovision: hooks/postprovision-audit.sh   (T-036; runs unconditionally)
-#                    hooks/postprovision-smoke.sh   (T-037; gated on ENABLE_SMOKE_VALIDATION)
+#   - postprovision: hooks/postprovision-finalize.sh (Foundry connection wiring)
+#                    hooks/postprovision-audit.sh    (network-posture audit; runs unconditionally)
+#                    hooks/postprovision-smoke.sh    (gated on ENABLE_SMOKE_VALIDATION)
 #   - The Foundry "Azure API Management" admin-connected model is authored
-#     in Bicep (T-031); the postprovision-connection.sh + predown-connection.sh
+#     in Bicep; the postprovision-connection.sh + predown-connection.sh
 #     hook templates exist as INERT `.template` files under hooks/ and are
-#     only enabled by the operator if T-031 fails at deploy time (T-032).
+#     only enabled by the operator if the Bicep-native path fails at deploy time.
 
 name: private-foundry-iac
 
@@ -27,9 +28,9 @@ infra:
   module: main
 
 # Lifecycle hooks — best-effort posture audit and optional smoke inference call.
-# All hooks are bash on macOS/Linux and PowerShell on Windows (the .ps1 sibling is
-# left to a future task — current scripts run on POSIX shells, including the GHA
-# `ubuntu-latest` runner most operators will use).
+# All hooks are bash on macOS/Linux. A PowerShell sibling for Windows is not
+# wired in — the current scripts run on POSIX shells, including the GHA
+# `ubuntu-latest` runner most operators will use.
 hooks:
   postprovision:
     posix:
@@ -38,10 +39,10 @@ hooks:
       continueOnError: false
       interactive: false
 
-  # Predown audit — runs before `azd down`. Currently a placeholder; the teardown
-  # verification (T-038) is exercised as a sidecar script the operator runs after
-  # `azd down` completes, not as a predown hook (the resources still exist at
-  # predown time, which would make the audit always fail).
+  # Predown audit — runs before `azd down`. Currently a placeholder; teardown
+  # verification is a sidecar script the operator runs after `azd down`
+  # completes, not a predown hook (the resources still exist at predown time,
+  # which would make the audit always fail).
   # predown:
   #   posix:
   #     shell: sh
@@ -49,8 +50,8 @@ hooks:
   #     continueOnError: true
   #     interactive: false
 
-# --- T-032 fallback: documented but DISABLED by default. ---
-# If T-031 (Bicep-native Foundry admin-connected model) fails at deploy time,
+# --- Operator-enabled fallback: documented but DISABLED by default. ---
+# If the Bicep-native Foundry admin-connected model fails at deploy time,
 # uncomment the block below AND rename the two `.template` script files in
 # hooks/ to drop the `.template` suffix.
 #

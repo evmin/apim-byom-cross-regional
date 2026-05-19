@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# demo-scripts/01_sc_model.sh — STAGE 1: model in Sweden Central.
+# scripts/demo/01_sc_model.sh — STAGE 1: model in Sweden Central.
 # =============================================================================
 # What this proves:
 #   The model behind the demo lives in Sweden Central. Pure az control-plane

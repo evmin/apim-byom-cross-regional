@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/jumpbox/posture-from-vnet.sh — DJ-012 — VNet-side posture audit.
+# scripts/jumpbox-vm/posture-from-vnet.sh — DJ-012 — VNet-side posture audit.
 # =============================================================================
 # Mirrors the host-side `hooks/postprovision-audit.sh` checks but runs from
 # *inside* the agent VNet using the jumpbox MI. Confirms that even from a

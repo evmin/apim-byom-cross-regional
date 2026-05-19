@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/jumpbox/smoke-dns.sh — DJ-011 — private-DNS resolution check.
+# scripts/jumpbox-vm/smoke-dns.sh — DJ-011 — private-DNS resolution check.
 # =============================================================================
 # Resolves each privatelink.* FQDN we expect to be PE-fronted; FAILs if any
 # resolution returns a non-RFC1918 address (i.e. would resolve to the public

@@ -1,30 +1,25 @@
-// =============================================================================
 // sc-model-plane.bicep — Sweden Central model-plane stack (resource-group scope).
-// =============================================================================
-//
+
 // Provisions:
-//   - SC VNet + APIM-outbound subnet + SC PE subnet (T-022)
-//   - 3 SC private DNS zones + VNet links (BYO-aware) (T-023)
-//   - SC Foundry / AOAI account + N model deployments via AVM (T-024)
-//   - PE for the SC account, three-zone DNS group (T-025)
-//   - APIM Std v2 / Prem v2 service with system-assigned MI, outbound VNet
-//     integration, publicNetworkAccess = Disabled (T-026)
-//   - APIM service policy assembled from infra/policies/*.xml (T-027)
-//   - Diagnostic settings (T-030b) — gated on logAnalyticsWorkspaceId
-//
-// AVM pins (resolved against the live registry — see research.md § R-A1):
-//   br/public:avm/res/network/virtual-network:0.9.0
-//   br/public:avm/res/network/private-dns-zone:0.8.1
-//   br/public:avm/res/network/private-endpoint:0.12.1
-//   br/public:avm/res/cognitive-services/account:0.14.2
-//   br/public:avm/res/api-management/service:0.14.1
-// =============================================================================
+// - SC VNet + APIM-outbound subnet + SC PE subnet
+// - 3 SC private DNS zones + VNet links (BYO-aware)
+// - SC Foundry / AOAI account + N model deployments via AVM
+// - PE for the SC account, three-zone DNS group
+// - APIM Std v2 / Prem v2 service with system-assigned MI, outbound VNet
+// integration, publicNetworkAccess = Disabled
+// - APIM service policy assembled from infra/policies/*.xml
+// - Diagnostic settings — gated on logAnalyticsWorkspaceId
+
+// AVM pins (resolved against the live registry):
+// br/public:avm/res/network/virtual-network:0.9.0
+// br/public:avm/res/network/private-dns-zone:0.8.1
+// br/public:avm/res/network/private-endpoint:0.12.1
+// br/public:avm/res/cognitive-services/account:0.14.2
+// br/public:avm/res/api-management/service:0.14.1
 
 targetScope = 'resourceGroup'
 
-// =============================================================================
 // Parameters
-// =============================================================================
 
 @description('Lowercase short prefix used in resource names.')
 param namePrefix string
@@ -72,9 +67,7 @@ param logAnalyticsWorkspaceId string
 @description('Common tags stamped on every resource.')
 param solutionTags object
 
-// =============================================================================
 // Locals
-// =============================================================================
 
 var rgLocation = resourceGroup().location
 var uniq = take(uniqueString(resourceGroup().id, namePrefix, azdEnvironmentName), 6)
@@ -95,16 +88,13 @@ var scZoneNames = [
   'privatelink.cognitiveservices.azure.com' // C-Z3 Cognitive Services
 ]
 
-// =============================================================================
-// C-N1/C-N2/C-N3 — SC VNet + two subnets (T-022)
-// =============================================================================
-//
+// C-N1/C-N2/C-N3 — SC VNet + two subnets
+
 // APIM v2 outbound VNet integration consumes the apim-outbound subnet by
 // resource ID. APIM Std v2 / Prem v2 validation requires an NSG to be
 // associated with the outbound subnet (the validator only checks presence; the
 // default platform rules suffice for Std v2 with `virtualNetworkType=External`).
 // SC VNet is NOT peered to the WE VNet.
-// =============================================================================
 
 resource apimOutboundNsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
   name: apimOutboundNsgName
@@ -141,13 +131,10 @@ module vnet 'br/public:avm/res/network/virtual-network:0.9.0' = {
 var apimOutboundSubnetId = '${vnet.outputs.resourceId}/subnets/${apimOutboundSubnetName}'
 var scPeSubnetId = '${vnet.outputs.resourceId}/subnets/${scPeSubnetName}'
 
-// =============================================================================
-// C-Z1/C-Z2/C-Z3 — SC private DNS zones + VNet links (T-023)
-// =============================================================================
-//
-// The SC DNS plane is independent from the WE DNS plane (FR-020). Zones live
+// C-Z1/C-Z2/C-Z3 — SC private DNS zones + VNet links
+
+// The SC DNS plane is independent from the WE DNS plane. Zones live
 // in this RG and are linked only to the SC VNet.
-// =============================================================================
 
 module scZones 'br/public:avm/res/network/private-dns-zone:0.8.1' = [for zoneName in scZoneNames: if (!contains(existingPrivateDnsZoneIds, zoneName) || empty(existingPrivateDnsZoneIds[zoneName] ?? '')) {
   name: 'sc-zone-${replace(zoneName, '.', '-')}'
@@ -189,9 +176,7 @@ var scZoneIdMap = {
     : scZones[2].outputs.resourceId
 }
 
-// =============================================================================
-// C-I1 / C-I2 — SC Foundry / AOAI account + model deployments (T-024)
-// =============================================================================
+// C-I1 / C-I2 — SC Foundry / AOAI account + model deployments
 
 module scFoundryAccount 'br/public:avm/res/cognitive-services/account:0.14.2' = {
   name: 'sc-foundry-account'
@@ -228,9 +213,7 @@ module scFoundryAccount 'br/public:avm/res/cognitive-services/account:0.14.2' = 
   }
 }
 
-// =============================================================================
-// C-P1 — PE for SC model account (T-025)
-// =============================================================================
+// C-P1 — PE for SC model account
 
 module peScAccount 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   name: 'sc-pe-account'
@@ -269,12 +252,9 @@ module peScAccount 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   }
 }
 
-// =============================================================================
-// X-1 — APIM service (T-026)
-// =============================================================================
-//
+// APIM service
+
 // AVM: br/public:avm/res/api-management/service:0.14.1
-// =============================================================================
 
 module apim 'br/public:avm/res/api-management/service:0.14.1' = {
   name: 'sc-apim'
@@ -309,10 +289,8 @@ module apim 'br/public:avm/res/api-management/service:0.14.1' = {
   }
 }
 
-// =============================================================================
-// X-2 — APIM 'openai' API + catchall operations (T-026 follow-on)
-// =============================================================================
-//
+// APIM 'openai' API + catchall operations
+
 // The service-level policy (apim-policy.bicep) validates the project MI's
 // `oid` claim and points the backend at the SC AOAI account, but APIM cannot
 // route any request until there is at least one *API* resource whose `path`
@@ -321,14 +299,13 @@ module apim 'br/public:avm/res/api-management/service:0.14.1' = {
 // `https://{apimGateway}/openai/deployments/{deployment}/chat/completions`,
 // so we author an API with `path: openai` and two catchall operations
 // (POST + GET on `/*`) to cover every AOAI verb/route.
-//
+
 // We deliberately leave `subscriptionRequired: false` — auth is enforced
 // solely by the service-level validate-azure-ad-token policy, not by an
 // APIM subscription key. The `serviceUrl` is the AOAI account's data-plane
 // root with the `/openai` prefix; the service-level `set-backend-service`
 // policy overrides it on every request (this default is only used by
 // `Try it` in the developer portal).
-// =============================================================================
 
 resource apimService 'Microsoft.ApiManagement/service@2024-05-01' existing = {
   name: apimServiceName
@@ -368,9 +345,7 @@ resource apimOpenAiCatchallGet 'Microsoft.ApiManagement/service/apis/operations@
   }
 }
 
-// =============================================================================
 // Outputs
-// =============================================================================
 
 output scVnetId string = vnet.outputs.resourceId
 output apimOutboundSubnetId string = apimOutboundSubnetId

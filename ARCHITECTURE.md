@@ -80,14 +80,17 @@ Either way, APIM strips the inbound credential and calls the model using its own
 | Path | What's there |
 |---|---|
 | `infra/` | The Bicep stack (Azure Verified Modules where available), wired into `azure.yaml` for `azd up`. |
-| `demo-scripts/` | Three-stage proof: model in SC, APIM in SC, end-to-end through the v2 Responses API. |
-| `scripts/jumpbox/` | Bootstrap + smoke suite that runs inside the agent VNet through Azure Bastion. |
+| `scripts/demo/` | Three-stage proof: model in SC, APIM in SC, end-to-end through the v2 Responses API. |
+| `scripts/jumpbox-vm/` | Bootstrap + smoke suite that runs inside the agent VNet through Azure Bastion. |
 | `docs/madr/` | Architecture Decision Records — what we chose, what we ruled out, why. |
 | `docs/001_architecture.md` | Long-form technical narrative — topology, DNS, policies, identity. |
-| `docs/002_sop.md`, `docs/003_portal_tunnel.md` | Day-2 operating procedures. |
+| `docs/002_quickstart.md`, `docs/003_portal_tunnel.md` | Day-2 operating procedures. |
+| `docs/004_research.md` | AVM coverage analysis and IaC design decisions. |
 
 ## Read next
 
 - **First time here?** → [`docs/001_architecture.md`](./docs/001_architecture.md) for the full technical narrative.
+- **Want to run it?** → [`docs/002_quickstart.md`](./docs/002_quickstart.md) for deploy / verify / tear down.
 - **Want the decisions, not the diagrams?** → [`docs/madr/README.md`](./docs/madr/README.md).
-- **Want to run it?** → `azd up`, then `demo-scripts/run-all.sh`.
+- **Need IaC rationale and AVM gaps?** → [`docs/004_research.md`](./docs/004_research.md).
+- **Need portal access while public network is off?** → [`docs/003_portal_tunnel.md`](./docs/003_portal_tunnel.md).

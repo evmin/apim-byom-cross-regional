@@ -1,16 +1,16 @@
 // Cross-property validation helper module for `main.bicep`.
-//
-// Bicep does not (yet, on stable) expose a free-form `error()` function; the
+
+// Bicep does not (yet, on stable) expose a free-form `error` function; the
 // idiom we use here is `@allowed(['ok'])` on every check parameter. Callers
 // pass either 'ok' (when the check passes) or a descriptive failure string
 // (when it fails); the `@allowed` decorator then aborts the deployment with
 // the failing string in the error message, which is far more useful than a
 // generic "deployment failed".
-//
+
 // This module declares NO resources — it exists only to surface validation
 // failures at `azd provision --preview` time, before any resource is queued.
-//
-// Implements parameters.schema.json § $defs.validationNotes (T-007).
+
+// Implements parameters.schema.json § $defs.validationNotes.
 
 targetScope = 'subscription'
 

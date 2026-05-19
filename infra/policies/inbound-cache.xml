@@ -1,6 +1,6 @@
 <!--
   Optional inbound semantic-cache lookup fragment.
-  Composed into the inbound stack by infra/modules/sc-model-plane.bicep (T-027)
+  Composed into the inbound stack by infra/modules/sc-model-plane.bicep
   ONLY when parameter `enableSemanticCache = true`.
 
   Inserted BETWEEN `llm-token-limit` and `set-backend-service` so that:
@@ -8,7 +8,7 @@
     - on a cache hit the backend hop is skipped entirely (faster, no model cost),
     - on a cache miss `set-backend-service` still routes to the SC Foundry account.
 
-  Placeholder tokens replaced via Bicep `replace()` in T-027:
+  Placeholder tokens replaced via Bicep `replace()` in :
     {{CACHE_TTL_SECONDS}} -> 300   (5 minutes; default; override-able)
 -->
 <llm-semantic-cache-lookup

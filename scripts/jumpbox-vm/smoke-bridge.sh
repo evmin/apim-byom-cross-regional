@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/jumpbox/smoke-bridge.sh — cross-region APIM bridge inference smoke.
+# scripts/jumpbox-vm/smoke-bridge.sh — cross-region APIM bridge inference smoke.
 # =============================================================================
 #
 # Path:

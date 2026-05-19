@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/jumpbox/bootstrap.sh — DJ-008 — idempotent tool install.
+# scripts/jumpbox-vm/bootstrap.sh — DJ-008 — idempotent tool install.
 # =============================================================================
 # Runs on first boot via cloud-init AND can be re-run by the operator if a
 # package install step lost a race. Drops a marker at

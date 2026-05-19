@@ -29,7 +29,7 @@ Provision a small Ubuntu jumpbox VM in the agent VNet (`infra/modules/demo-jumpb
 - **Azure Bastion** (Standard SKU, tunneling enabled) co-located in the agent VNet.
 - Cloud-init writes a fixed set of smoke scripts under `/opt/mreg-validate/` and a Python venv with `azure-ai-projects`, `azure-identity`, `openai`, `httpx`.
 - Operator entry point: `scripts/jumpbox-run.sh "<remote-bash>"` opens an `az network bastion tunnel`, ssh's in non-interactively, runs the command, tears down the tunnel.
-- Validation entry point: `scripts/jumpbox-smoke.sh` — dns / reject / bridge / posture checks. Demo entry point: `demo-scripts/run-all.sh` — 01 / 02 / 03.
+- Validation entry point: `scripts/jumpbox-smoke.sh` — dns / reject / bridge / posture checks. Demo entry point: `scripts/demo/run-all.sh` — 01 / 02 / 03.
 
 The Bastion is also used for browser access to the Foundry portal via SOCKS-over-SSH-over-Bastion — see `../003_portal_tunnel.md`.
 

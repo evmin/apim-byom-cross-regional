@@ -1,22 +1,15 @@
-// =============================================================================
-// main.bicep — subscription-scoped entry point for `001-private-foundry-iac`.
-// =============================================================================
-//
+// main.bicep — subscription-scoped entry point for the private Foundry IaC demo.
+
 // Provisions a private Foundry Agent Service in WE (or EUS2) and a Sweden
 // Central model plane bridged by an APIM Std v2 / Prem v2 service. All
 // resources have publicNetworkAccess disabled at create time; identity on
 // the runtime path is exclusively AAD via system-assigned managed identities.
-//
+
 // Architecture source of truth: ../docs/001_architecture.md
-// Plan: ../specs/001-private-foundry-iac/plan.md
-// Tasks: ../specs/001-private-foundry-iac/tasks.md (T-006..T-009)
-// =============================================================================
 
 targetScope = 'subscription'
 
-// =============================================================================
 // User-defined types (Bicep UDT)
-// =============================================================================
 
 @description('Single model deployment spec — name + model identity + SKU. Mirrors contracts/parameters.schema.json items shape.')
 type modelDeploymentSpec = {
@@ -47,9 +40,7 @@ type existingDnsZonesType = {
   'privatelink.azure-api.net': string?
 }
 
-// =============================================================================
-// Parameters — mirror contracts/parameters.schema.json (T-006).
-// =============================================================================
+// Parameters — mirror contracts/parameters.schema.json.
 
 @description('Target Azure subscription ID. Bound to azd env var AZURE_SUBSCRIPTION_ID.')
 param azureSubscriptionId string
@@ -164,9 +155,7 @@ param jumpboxVmSize string = 'Standard_D2s_v5'
 @description('Solution version stamp applied as a tag (`solution-version`). Surface for audit / change tracking.')
 param solutionVersion string = '0.1.0'
 
-// =============================================================================
 // Derived values
-// =============================================================================
 
 var locationMap = {
   'westeurope+swedencentral': {
@@ -216,27 +205,23 @@ var solutionTags = {
 var agentRgName = '${namePrefix}-${azdEnvironmentName}-agent-${agentRegionShort}-rg'
 var modelRgName = '${namePrefix}-${azdEnvironmentName}-model-sc-rg'
 
-// =============================================================================
 // apim-byom connection shared api-key (PR #1 fix-up — root cause #2 from
 // commit 95342e0). The Foundry Responses API rejects the apim-byom connection
 // with `400 "Connection not found"` when the connection has `authType: AAD`.
 // Switching to `authType: ApiKey` requires a key value that lives on BOTH
 // the connection (`credentials.key`) and inside the APIM policy (the
-// validate-header gate at infra/policies/inbound.xml). uniqueString() makes
+// validate-header gate at infra/policies/inbound.xml). uniqueString makes
 // the value deterministic across redeploys without checking a secret into
 // source. Pure-AAD callers (jumpbox UAMI smoke-bridge) still pass through
 // the policy's AAD fallback branch — the key just bypasses AAD validation.
-// =============================================================================
 var apimByomConnectionKey = uniqueString(subscription().subscriptionId, azdEnvironmentName, namePrefix, 'apim-byom-key-v1')
 
-// =============================================================================
-// Cross-property validation (T-007) — encoded via the _validate.bicep module
+// Cross-property validation — encoded via the _validate.bicep module
 // which uses @allowed(['ok']) on every check param. Cross-property checks that
 // JSON Schema cannot express live here (parameters.schema.json § validationNotes).
-// =============================================================================
 
 // --- Helpers for CIDR validation ---
-// parseCidr returns { network, prefix, firstUsable, lastUsable, ... }.
+// parseCidr returns `{ network, prefix, firstUsable, lastUsable, ... }`.
 var weVnetParsed = parseCidr(weVnetCidr)
 var agentSubnetParsed = parseCidr(agentSubnetCidr)
 var agentPeSubnetParsed = parseCidr(agentPeSubnetCidr)
@@ -244,7 +229,7 @@ var scVnetParsed = parseCidr(scVnetCidr)
 var apimOutboundSubnetParsed = parseCidr(apimOutboundSubnetCidr)
 var scPeSubnetParsed = parseCidr(scPeSubnetCidr)
 
-// Agent subnet prefix length MUST be <= 27 (FR-006 + R-04).
+// Agent subnet prefix length MUST be <= 27.
 var agentSubnetPrefixLen = int(split(agentSubnetCidr, '/')[1])
 var weVnetPrefixLen = int(split(weVnetCidr, '/')[1])
 var agentPeSubnetPrefixLen = int(split(agentPeSubnetCidr, '/')[1])
@@ -288,8 +273,8 @@ var cidrsToCheck = [
 var allCidrsAreRfc1918 = length(filter(cidrsToCheck, c => length(filter(rfc1918Prefixes, p => startsWith(c, p))) > 0)) == length(cidrsToCheck)
 
 // CIDR containment: a child CIDR is contained in a parent iff:
-//   1. child prefix length >= parent prefix length, AND
-//   2. parent's network address bits match child's masked address bits.
+// 1. child prefix length >= parent prefix length, AND
+// 2. parent's network address bits match child's masked address bits.
 // parseCidr exposes `network` (string) and `firstUsable`/`lastUsable`. We use the
 // numeric form via cidrSubnet to confirm containment: if `cidrSubnet(parent, childPrefixLen, 0)`
 // reproduces `child.network` for some index, the child is inside the parent. A simpler safe
@@ -305,9 +290,9 @@ var allCidrsAreRfc1918 = length(filter(cidrsToCheck, c => length(filter(rfc1918P
 // parent's network's first <prefix> bits — represented at byte boundary here.
 
 // To keep main.bicep deterministic and lint-clean, we apply two containment safeguards:
-//   (a) child prefix length > parent prefix length (necessary condition); and
-//   (b) `parseCidr(child).network` equals the first-usable network address that `cidrSubnet`
-//       returns for the child's prefix length within the parent's space at some index.
+// (a) child prefix length > parent prefix length (necessary condition); and
+// (b) `parseCidr(child).network` equals the first-usable network address that `cidrSubnet`
+// returns for the child's prefix length within the parent's space at some index.
 // For the documented defaults these both hold; operator overrides outside this envelope will
 // be caught by Azure's runtime VNet/subnet validation at deploy time.
 
@@ -317,7 +302,7 @@ var scVnetContainsApimOutboundSubnet = (apimOutboundPrefixLen > scVnetPrefixLen)
 var scVnetContainsScPeSubnet = (scPePrefixLen > scVnetPrefixLen) && (split(scPeSubnetParsed.network, '.')[0] == split(scVnetParsed.network, '.')[0]) && (split(scPeSubnetParsed.network, '.')[1] == split(scVnetParsed.network, '.')[1])
 
 // Child-subnet non-overlap: trivially satisfied when the two CIDRs have distinct network
-// addresses AND neither is a sub-CIDR of the other. We use `parseCidr().network` string
+// addresses AND neither is a sub-CIDR of the other. We use `parseCidr.network` string
 // equality as a fast no-overlap signal (true overlap requires deeper math; Azure catches it
 // at deploy time).
 var weChildSubnetsNoOverlap = agentSubnetParsed.network != agentPeSubnetParsed.network
@@ -374,9 +359,7 @@ module validate 'modules/_validate.bicep' = {
   }
 }
 
-// =============================================================================
-// Resource groups (T-008)
-// =============================================================================
+// Resource groups
 
 resource agentRg 'Microsoft.Resources/resourceGroups@2024-11-01' = {
   name: agentRgName
@@ -396,9 +379,7 @@ resource modelRg 'Microsoft.Resources/resourceGroups@2024-11-01' = {
   ]
 }
 
-// =============================================================================
-// Module dispatch (T-009)
-// =============================================================================
+// Module dispatch
 
 module weAgentPlane 'modules/we-agent-plane.bicep' = {
   scope: agentRg
@@ -454,7 +435,7 @@ module apimPolicy 'modules/apim-policy.bicep' = {
     scFoundryAccountName: scModelPlane.outputs.scFoundryAccountName
     agentProjectPrincipalId: weAgentPlane.outputs.agentProjectPrincipalId
     // Demo jumpbox UAMI is appended so the operator can exercise the
-    // cross-region inference bridge (scripts/jumpbox/smoke-bridge.sh) from
+    // cross-region inference bridge (scripts/jumpbox-vm/smoke-bridge.sh) from
     // inside the agent VNet without spinning up an agent run. The
     // smoke-reject test deliberately uses a *wrong-audience* token so the
     // negative case stays meaningful even with the jumpbox UAMI allowlisted.
@@ -504,11 +485,9 @@ module wiring 'modules/wiring.bicep' = {
   }
 }
 
-// =============================================================================
 // Demo jumpbox (DJ-004) — always-on operator VM + Bastion inside the NEU
 // agent VNet. Used by hooks/postprovision-smoke.sh and the operator's
 // scripts/jumpbox-* runners.
-// =============================================================================
 
 module demoJumpbox 'modules/demo-jumpbox.bicep' = {
   scope: agentRg
@@ -553,9 +532,7 @@ module rbacJumpboxModelRg 'modules/rbac-jumpbox-model-rg.bicep' = {
   }
 }
 
-// =============================================================================
-// Outputs — match contracts/outputs.schema.json (T-009)
-// =============================================================================
+// Outputs — match contracts/outputs.schema.json
 
 output agentResourceGroupName string = agentRg.name
 output modelResourceGroupName string = modelRg.name

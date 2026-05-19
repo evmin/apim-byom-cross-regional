@@ -1,4 +1,4 @@
-# `demo-scripts/` — Cross-region demo (Switzerland North → APIM SC → AOAI SC)
+# `scripts/demo/` — Cross-region demo (Switzerland North → APIM SC → AOAI SC)
 
 Crystal-clear, laconic. Each script does ONE thing, prints a banner, ends in
 `PASS — <name>` or a one-line failure.
@@ -32,12 +32,12 @@ STAGE 3: Hit the Switzerland North Foundry project's Responses API with
 
 ```bash
 # happy path (~1-2 min cold; most time is the single Bastion tunnel setup ≈30s)
-bash demo-scripts/run-all.sh
+bash scripts/demo/run-all.sh
 
 # individual stages (each is standalone; just `source ./00_env.sh` at top)
-bash demo-scripts/01_sc_model.sh
-bash demo-scripts/02_sc_apim.sh
-bash demo-scripts/03_responses_api.sh
+bash scripts/demo/01_sc_model.sh
+bash scripts/demo/02_sc_apim.sh
+bash scripts/demo/03_responses_api.sh
 ```
 
 ## What each script proves
@@ -156,7 +156,7 @@ ALL STAGES PASS
 
 - `../docs/001_architecture.md` — full architecture diagrams (don't duplicate them
   here).
-- `scripts/jumpbox/` — the deeper validation suite (DNS audit, posture
+- `../jumpbox-vm/` — the deeper validation suite (DNS audit, posture
   audit, AAD-reject smoke, direct-inference smoke). These run from inside
   the agent VNet and are wired into `azd up` via
   `hooks/postprovision-smoke.sh`.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/verify-teardown.sh — T-038 teardown verification probe.
+# scripts/verify-teardown.sh — teardown verification probe.
 # =============================================================================
 #
 # Runs AFTER `azd down`. Confirms that no solution-tagged resource, no solution-

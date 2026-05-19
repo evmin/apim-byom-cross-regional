@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # =============================================================================
-# demo-scripts/00_env.sh — single source of demo env vars.
+# scripts/demo/00_env.sh — single source of demo env vars.
 # =============================================================================
 # Intent (laconic):
 #   Resolve the live azd env (`fdev`) values that every demo stage needs and

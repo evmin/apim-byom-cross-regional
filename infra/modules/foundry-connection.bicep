@@ -1,32 +1,28 @@
-// =============================================================================
 // foundry-connection.bicep — native Foundry admin-connected model.
-// =============================================================================
-//
-// AVM gap (T-031): AVM `cognitive-services/account@0.14.2` does not author
+
+// AVM gap: AVM `cognitive-services/account@0.14.2` does not author
 // `Microsoft.CognitiveServices/accounts/projects/connections` children. This
-// module is the documented native fallback per research.md R-01 / R-06 / R-A1
-// and data-model.md X-5.
-//
+// module is the documented native fallback.
+
 // The connection is the "Azure API Management" admin-connected model on the
 // WE Foundry project. Through it the agent runtime reaches the SC model
 // deployments via the cross-region private path.
-//
+
 // Retire this module when an AVM module ships `projects/connections` coverage
 // (target: a dedicated avm/res/cognitive-services/account-project-connection
 // module, or `avm/res/cognitive-services/account` >= 0.15.x with `projects[]`
 // + nested `connections[]` first-class params).
-//
+
 // Connection schema follows the verified-working shape from
 // microsoft-foundry/foundry-samples 01-connections/apim — specifically:
-//   - authType: 'ProjectManagedIdentity' (NOT legacy 'AAD')
-//   - audience at properties.audience (NOT in metadata)
-//   - metadata.models: JSON-stringified array with full model properties
-//   - metadata.deploymentInPath: 'true' for AOAI-shape backends
-//   - metadata.inferenceAPIVersion: GA AOAI API version
-//
+// - authType: 'ProjectManagedIdentity' (NOT legacy 'AAD')
+// - audience at properties.audience (NOT in metadata)
+// - metadata.models: JSON-stringified array with full model properties
+// - metadata.deploymentInPath: 'true' for AOAI-shape backends
+// - metadata.inferenceAPIVersion: GA AOAI API version
+
 // `properties.category` MUST be `ApiManagement` (verified against the Foundry
-// portal-authored example at R-A1 time and the foundry-cross-resource skill).
-// =============================================================================
+// portal-authored example and the foundry-cross-resource skill).
 
 targetScope = 'resourceGroup'
 
@@ -75,13 +71,13 @@ var modelsJsonString = '[${join(modelsJsonEntries, ',')}]'
 
 // Connection schema: verified-working shape from foundry-cross-resource skill
 // (live-verified 2026-04-23 against microsoft-foundry/foundry-samples).
-//
+
 // IMPORTANT: `target` MUST include the APIM API path suffix (`/openai` — the
 // APIM API `path` literal authored in sc-model-plane.bicep:343). Without the
 // suffix Foundry's Responses API rejects the model reference with
 // `400 "Connection 'apim-byom' not found"` before any request is sent to
 // APIM. See PR #1 commit 95342e0 (root cause #1).
-//
+
 // authType MUST be `ApiKey` (with a credential value). With `AAD` the
 // Responses API returns `400 "Connection not found"`. The key value is
 // shared with the APIM service-level policy which checks the `api-key`

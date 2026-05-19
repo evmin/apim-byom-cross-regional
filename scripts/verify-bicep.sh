@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# scripts/verify-bicep.sh — T-033 compile-time verification.
+# scripts/verify-bicep.sh — compile-time verification.
 # =============================================================================
 #
 # Runs `az bicep build` + `az bicep lint` on infra/main.bicep. Treats every
