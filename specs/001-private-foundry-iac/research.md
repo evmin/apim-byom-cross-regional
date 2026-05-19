@@ -3,7 +3,7 @@
 **Feature**: `001-private-foundry-iac`
 **Plan**: [`plan.md`](./plan.md)
 **Spec**: [`spec.md`](./spec.md)
-**Architecture source**: [`005_architecture.md`](../../005_architecture.md)
+**Architecture source**: [`../../docs/005_architecture.md`](../../docs/005_architecture.md)
 
 This file resolves every IaC-level unknown surfaced by the plan before module boundaries are committed in Phase 1. Each item carries a **Decision**, **Rationale**, and **Alternatives Considered**. Items whose final answer depends on the *live* AVM public registry at task-generation time are flagged as **PROVISIONAL — re-confirm in `/speckit.tasks`** so the registry probe happens close to implementation.
 
@@ -66,7 +66,7 @@ Concretely planned:
 
 **Decision**: **Yes; author the APIM inbound PE in the WE agent VNet (`location = westeurope`) targeting the APIM service in `swedencentral`.** Use the AVM PE module. If the module's parameter shape blocks cross-region authoring (it should not, since this is a platform-supported scenario per Azure documentation), fall back to native `Microsoft.Network/privateEndpoints@<latest>` with the same property shape.
 
-**Rationale**: The Azure platform documents that the APIM inbound PE NIC may be created in a region different from the APIM instance — that is precisely the cross-region bridge `005_architecture.md` relies on. The PE resource's `location` is the NIC's location (where the IP is bound), and the `privateLinkServiceId` points at the target by resource ID, region-agnostic. There is no platform-level blocker; the only risk is an AVM module quirk that *requires* matching regions, which would be a module bug. Confirmed against Microsoft documentation (APIM inbound PE — cross-region PE; link in `005_architecture.md` § References).
+**Rationale**: The Azure platform documents that the APIM inbound PE NIC may be created in a region different from the APIM instance — that is precisely the cross-region bridge `../../docs/005_architecture.md` relies on. The PE resource's `location` is the NIC's location (where the IP is bound), and the `privateLinkServiceId` points at the target by resource ID, region-agnostic. There is no platform-level blocker; the only risk is an AVM module quirk that *requires* matching regions, which would be a module bug. Confirmed against Microsoft documentation (APIM inbound PE — cross-region PE; link in `../../docs/005_architecture.md` § References).
 
 **Alternatives Considered**:
 
@@ -83,15 +83,15 @@ Concretely planned:
 
 **Question**: What are the binding rules for the agent subnet that backs the Foundry Agent Service capability host (Container-Apps-backed)?
 
-**Decision** (sourced from `005_architecture.md` and Microsoft docs):
+**Decision** (sourced from `../../docs/005_architecture.md` and Microsoft docs):
 
 - Subnet MUST be **delegated to `Microsoft.App/environments`** — no other delegation, no shared use.
 - Subnet MUST be **RFC1918**.
 - Prefix length: **`/24` recommended, `/27` minimum**. The IaC validates `agentSubnetPrefixLength ≤ 27` at parameter validation time and rejects smaller subnets (i.e., `/28` and below) with a clear error.
 - Subnet MUST be **dedicated to a single Foundry account** — no multi-tenant sharing.
-- Subnet MUST live in the **same region** as the Foundry account that backs the capability host (Microsoft API-level rule; see `005_architecture.md` § Context).
+- Subnet MUST live in the **same region** as the Foundry account that backs the capability host (Microsoft API-level rule; see `../../docs/005_architecture.md` § Context).
 
-**Rationale**: These are non-negotiable platform constraints, called out explicitly in `spec.md` § Edge Cases and `005_architecture.md`. The IaC's job is to enforce them at parameter-validation time before any resource is created — failing inside Azure mid-deploy is a worse operator experience.
+**Rationale**: These are non-negotiable platform constraints, called out explicitly in `spec.md` § Edge Cases and `../../docs/005_architecture.md`. The IaC's job is to enforce them at parameter-validation time before any resource is created — failing inside Azure mid-deploy is a worse operator experience.
 
 **Alternatives Considered**:
 

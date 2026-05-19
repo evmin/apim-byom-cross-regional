@@ -154,7 +154,7 @@ ALL STAGES PASS
 
 ## See also
 
-- `005_architecture.md` — full architecture diagrams (don't duplicate them
+- `../docs/005_architecture.md` — full architecture diagrams (don't duplicate them
   here).
 - `scripts/jumpbox/` — the deeper validation suite (DNS audit, posture
   audit, AAD-reject smoke, direct-inference smoke). These run from inside

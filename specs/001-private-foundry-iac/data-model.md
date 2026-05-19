@@ -2,7 +2,7 @@
 
 **Feature**: `001-private-foundry-iac`
 **Plan**: [`plan.md`](./plan.md)
-**Architecture source**: [`005_architecture.md`](../../005_architecture.md) (rows 1–7 of the topology table)
+**Architecture source**: [`../../docs/005_architecture.md`](../../docs/005_architecture.md) (rows 1–7 of the topology table)
 **Research**: [`research.md`](./research.md)
 
 > Note: for an infrastructure feature, this file plays the role the speckit template calls "data-model.md" — it enumerates the Azure resources the solution provisions, the AVM module choice (or documented fallback), parent/child relationships, and the cross-region links. There are no application-level entities.
