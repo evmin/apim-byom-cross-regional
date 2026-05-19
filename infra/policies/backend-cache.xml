@@ -1,12 +1,12 @@
 <!--
   Optional backend semantic-cache store fragment.
-  Composed into the backend stack by infra/modules/sc-model-plane.bicep (T-027)
+  Composed into the backend stack by infra/modules/sc-model-plane.bicep
   ONLY when parameter `enableSemanticCache = true`.
 
   Placed AFTER `authentication-managed-identity` (so a backend response actually
   arrived and is a candidate for caching).
 
-  Placeholder tokens replaced via Bicep `replace()` in T-027:
+  Placeholder tokens replaced via Bicep `replace()` in :
     {{CACHE_TTL_SECONDS}} -> 300
 -->
 <llm-semantic-cache-store duration="300" />

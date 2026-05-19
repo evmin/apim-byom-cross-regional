@@ -1,27 +1,24 @@
-// =============================================================================
 // foundry-data-connections.bicep — BYO data-plane project connections.
-// =============================================================================
-//
+
 // Authors three project-scoped connections referenced by the project capability
 // host (`projcaphost`) for the Foundry "standard agent setup with private
 // networking" topology:
-//
-//   - `cosmos-byom`   — connection to the BYO Cosmos DB account
-//                       (capabilityHost.threadStorageConnections[0])
-//   - `storage-byom`  — connection to the BYO Storage account
-//                       (capabilityHost.storageConnections[0])
-//   - `search-byom`   — connection to the BYO AI Search service
-//                       (capabilityHost.vectorStoreConnections[0])
-//
+
+// - `cosmos-byom` — connection to the BYO Cosmos DB account
+// (capabilityHost.threadStorageConnections[0])
+// - `storage-byom` — connection to the BYO Storage account
+// (capabilityHost.storageConnections[0])
+// - `search-byom` — connection to the BYO AI Search service
+// (capabilityHost.vectorStoreConnections[0])
+
 // These are MANDATORY for `RunStatus` to ever leave `failed/server_error`:
 // without them the Foundry runtime cannot resolve where to persist threads,
 // blobs, and vector stores during an agent run.
-//
+
 // AVM gap: AVM `cognitive-services/account@0.14.2` does NOT author
-// `projects/connections` children. Native fallback per R-01 / R-06 / R-A1.
+// `projects/connections` children. Native fallback.
 // Retire when an AVM `account-project-connection` module ships first-class
 // coverage with category-specific overloads.
-// =============================================================================
 
 targetScope = 'resourceGroup'
 
@@ -66,9 +63,7 @@ resource searchExisting 'Microsoft.Search/searchServices@2024-03-01-preview' exi
   name: searchServiceName
 }
 
-// -----------------------------------------------------------------------------
 // Cosmos connection — category = CosmosDB
-// -----------------------------------------------------------------------------
 // `target` MUST be the Cosmos data-plane endpoint (.documents.azure.com:443).
 // Foundry agents use this hostname when issuing data-plane reads/writes against
 // the three required containers (agent-entity-store, thread-message-store,
@@ -91,9 +86,7 @@ resource cosmosConnection 'Microsoft.CognitiveServices/accounts/projects/connect
   }
 }
 
-// -----------------------------------------------------------------------------
 // Storage connection — category = AzureStorageAccount
-// -----------------------------------------------------------------------------
 // `target` MUST be the blob endpoint. The runtime provisions two BYO containers
 // at first agent run: `<workspaceId>-azureml-blobstore` (intermediate system data,
 // chunks, embeddings) and `<workspaceId>-agents-blobstore` (user-uploaded files).
@@ -113,9 +106,7 @@ resource storageConnection 'Microsoft.CognitiveServices/accounts/projects/connec
   }
 }
 
-// -----------------------------------------------------------------------------
 // Search connection — category = CognitiveSearch
-// -----------------------------------------------------------------------------
 // `target` is the search service endpoint. Vector stores created by the agent
 // (File Search tool, etc.) live in indexes on this search service.
 resource searchConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-06-01' = {

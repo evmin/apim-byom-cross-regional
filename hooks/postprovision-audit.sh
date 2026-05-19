@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# hooks/postprovision-audit.sh — T-036 posture audit.
+# hooks/postprovision-audit.sh — posture audit.
 # =============================================================================
 # Invoked from azure.yaml `hooks.postprovision`. Runs AFTER `azd up`/`azd provision`
-# and asserts the deployed topology matches the security posture promised by
-# data-model.md and plan.md.
+# and asserts the deployed topology matches the security posture promised by the
+# architecture docs.
 #
 # Posture assertions (every check exits the script with status 1 on failure):
 #   1. Every solution-tagged resource has publicNetworkAccess = Disabled (or

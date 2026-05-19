@@ -1,33 +1,28 @@
-// =============================================================================
 // we-agent-plane.bicep — WE (or EUS2) agent-plane stack (resource-group scope).
-// =============================================================================
-//
+
 // Provisions:
-//   - agent VNet + delegated agent subnet + agent PE subnet (T-011)
-//   - 7 WE private DNS zones + VNet links, BYO-aware (T-012)
-//   - WE Foundry / Cognitive Services account via AVM (T-013)
-//   - WE Foundry project via NATIVE Bicep (T-014, AVM gap — see R-01/R-A1)
-//   - Cosmos DB / AI Search / Storage via AVM (T-015/16/17)
-//   - PE for the WE Foundry account, with three-zone DNS group (T-018)
-//   - PEs for Cosmos / AI Search / Storage (T-019)
-//   - Cross-region APIM inbound PE in the WE PE subnet (T-020)
-//   - Diagnostic settings (T-030b) — gated on logAnalyticsWorkspaceId
-//
-// AVM pins (resolved against the live registry — see research.md § R-A1):
-//   br/public:avm/res/network/virtual-network:0.9.0
-//   br/public:avm/res/network/private-dns-zone:0.8.1
-//   br/public:avm/res/network/private-endpoint:0.12.1
-//   br/public:avm/res/cognitive-services/account:0.14.2
-//   br/public:avm/res/document-db/database-account:0.19.0
-//   br/public:avm/res/search/search-service:0.12.1
-//   br/public:avm/res/storage/storage-account:0.32.0
-// =============================================================================
+// - agent VNet + delegated agent subnet + agent PE subnet
+// - 7 WE private DNS zones + VNet links, BYO-aware
+// - WE Foundry / Cognitive Services account via AVM
+// - WE Foundry project via NATIVE Bicep
+// - Cosmos DB / AI Search / Storage via AVM
+// - PE for the WE Foundry account, with three-zone DNS group
+// - PEs for Cosmos / AI Search / Storage
+// - Cross-region APIM inbound PE in the WE PE subnet
+// - Diagnostic settings — gated on logAnalyticsWorkspaceId
+
+// AVM pins (resolved against the live registry):
+// br/public:avm/res/network/virtual-network:0.9.0
+// br/public:avm/res/network/private-dns-zone:0.8.1
+// br/public:avm/res/network/private-endpoint:0.12.1
+// br/public:avm/res/cognitive-services/account:0.14.2
+// br/public:avm/res/document-db/database-account:0.19.0
+// br/public:avm/res/search/search-service:0.12.1
+// br/public:avm/res/storage/storage-account:0.32.0
 
 targetScope = 'resourceGroup'
 
-// =============================================================================
 // Parameters
-// =============================================================================
 
 @description('Lowercase short prefix (e.g., "myfdry") used in resource names.')
 param namePrefix string
@@ -56,22 +51,20 @@ param jumpboxSubnetCidr string = '10.40.3.0/27'
 @description('BYO private DNS zone IDs (parsed object). Empty/absent key => create-new.')
 param existingPrivateDnsZoneIds object
 
-@description('Optional Log Analytics workspace resource ID. When non-empty, diagnostic settings are wired on every solution-managed resource (T-030b).')
+@description('Optional Log Analytics workspace resource ID. When non-empty, diagnostic settings are wired on every solution-managed resource.')
 param logAnalyticsWorkspaceId string
 
 @description('Common tags stamped on every resource.')
 param solutionTags object
 
 // ---- Cross-region inputs (from sc-model-plane.bicep) ----
-@description('SC APIM service resource ID — target of the cross-region inbound PE (T-020).')
+@description('SC APIM service resource ID — target of the cross-region inbound PE.')
 param apimServiceId string
 
 @description('SC APIM private gateway hostname (e.g., <apim-name>.azure-api.net) — used for output wiring.')
 param apimGatewayHostname string
 
-// =============================================================================
 // Locals (naming, DNS zone topology, derived values)
-// =============================================================================
 
 var rgLocation = resourceGroup().location
 
@@ -99,24 +92,21 @@ var storageAccountName = toLower(take('${namePrefix}${take(azdEnvironmentName, 6
 
 // DNS zones the WE VNet should resolve.
 var weZoneNames = [
-  'privatelink.services.ai.azure.com'      // W-Z1 Foundry-services
-  'privatelink.openai.azure.com'           // W-Z2 AOAI
-  'privatelink.cognitiveservices.azure.com' // W-Z3 Cognitive Services
-  'privatelink.search.windows.net'          // W-Z4 AI Search
-  'privatelink.blob.core.windows.net'       // W-Z5 Storage blob
-  'privatelink.documents.azure.com'         // W-Z6 Cosmos
-  'privatelink.azure-api.net'               // W-Z7 APIM (cross-region resolution)
+  'privatelink.services.ai.azure.com'      // Foundry-services
+  'privatelink.openai.azure.com'           // AOAI
+  'privatelink.cognitiveservices.azure.com' // Cognitive Services
+  'privatelink.search.windows.net'          // AI Search
+  'privatelink.blob.core.windows.net'       // Storage blob
+  'privatelink.documents.azure.com'         // Cosmos
+  'privatelink.azure-api.net'               // APIM (cross-region resolution)
 ]
 
-// =============================================================================
-// W-N1/W-N2/W-N3 — VNet + two subnets (T-011)
-// =============================================================================
-//
+// VNet + two subnets
+
 // AVM: br/public:avm/res/network/virtual-network:0.9.0
-//
-// The agent subnet is delegated to Microsoft.App/environments per FR-006 + R-04.
+
+// The agent subnet is delegated to Microsoft.App/environments.
 // The agent PE subnet hosts all WE PE NICs incl. the cross-region APIM inbound PE.
-// =============================================================================
 
 module vnet 'br/public:avm/res/network/virtual-network:0.9.0' = {
   name: 'we-vnet'
@@ -163,20 +153,17 @@ var agentPeSubnetId = '${vnet.outputs.resourceId}/subnets/${agentPeSubnetName}'
 var bastionSubnetId = '${vnet.outputs.resourceId}/subnets/${bastionSubnetName}'
 var jumpboxSubnetId = '${vnet.outputs.resourceId}/subnets/${jumpboxSubnetName}'
 
-// =============================================================================
-// W-Z1..W-Z7 — Private DNS zones + VNet links (T-012)
-// =============================================================================
-//
+// Private DNS zones + VNet links
+
 // AVM: br/public:avm/res/network/private-dns-zone:0.8.1
-//
+
 // BYO-aware: for each zone name, if existingPrivateDnsZoneIds[name] is present
 // and non-empty, we SKIP zone creation and author only a native VNet link as a
 // child of the BYO zone. Otherwise we create the zone and link via AVM.
-//
+
 // The AVM PE module accepts a DNS zone group keyed off a zoneResourceId; both
 // the AVM-created zone and the BYO zone are referenced via their resource IDs,
-// so PE binding (T-018, T-019, T-020) is uniform regardless of provenance.
-// =============================================================================
+// so PE binding is uniform regardless of provenance.
 
 module weZones 'br/public:avm/res/network/private-dns-zone:0.8.1' = [for zoneName in weZoneNames: if (!contains(existingPrivateDnsZoneIds, zoneName) || empty(existingPrivateDnsZoneIds[zoneName] ?? '')) {
   name: 'we-zone-${replace(zoneName, '.', '-')}'
@@ -235,21 +222,18 @@ var weZoneIdMap = {
     : weZones[6].outputs.resourceId
 }
 
-// =============================================================================
-// W-I1 — Agent Foundry / Cognitive Services account (T-013)
-// =============================================================================
-//
+// Agent Foundry / Cognitive Services account
+
 // AVM: br/public:avm/res/cognitive-services/account:0.14.2
-// =============================================================================
 
 // Network injection MUST be set at account creation time. Per Microsoft Foundry
 // Agent Service docs:
-//   "For Hosted agents, the virtual network configuration (network injection)
-//    must be included when you first create the Foundry account. Adding network
-//    injection to an existing Foundry account after creation isn't supported
-//    for Hosted agents."
+// "For Hosted agents, the virtual network configuration (network injection)
+// must be included when you first create the Foundry account. Adding network
+// injection to an existing Foundry account after creation isn't supported
+// for Hosted agents."
 // — https://learn.microsoft.com/azure/ai-foundry/agents/how-to/virtual-networks
-//
+
 // The injected subnet MUST be the same agent-subnet that is delegated to
 // `Microsoft.App/environments` (the account capability host's `customerSubnet`
 // must match this value). Foundry's runtime provisions a managed Container
@@ -284,16 +268,14 @@ module weFoundryAccount 'br/public:avm/res/cognitive-services/account:0.14.2' = 
   }
 }
 
-// =============================================================================
-// W-I2 — Agent Foundry project (T-014)
-//
+// Agent Foundry project
+
 // AVM gap: AVM `cognitive-services/account@0.14.2` exposes `allowProjectManagement`
 // but does NOT author `Microsoft.CognitiveServices/accounts/projects` children.
-// Native fallback per research R-01 / Tasks-time addendum R-A1.
+// Native fallback / Tasks-time addendum.
 // Retire this native block once an AVM module ships first-class projects coverage
 // (target: `avm/res/cognitive-services/account` >= 0.15.x with `projects[]` param,
 // OR a dedicated `avm/res/cognitive-services/account-project` module).
-// =============================================================================
 
 // Reference the AVM-authored account by name so we can declare the project as
 // a child resource via the parent/name shorthand.
@@ -304,7 +286,7 @@ resource weFoundryAccountExisting 'Microsoft.CognitiveServices/accounts@2025-06-
   ]
 }
 
-// AVM gap: see research.md R-01 / R-A1.
+// AVM gap.
 resource weFoundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
   parent: weFoundryAccountExisting
   name: weFoundryProjectName
@@ -319,9 +301,7 @@ resource weFoundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-06
   }
 }
 
-// =============================================================================
-// W-D1/W-D2/W-D3 — BYO data plane: Cosmos, AI Search, Storage (T-015/16/17)
-// =============================================================================
+// BYO data plane: Cosmos, AI Search, Storage
 
 module cosmos 'br/public:avm/res/document-db/database-account:0.19.0' = {
   name: 'we-cosmos'
@@ -405,14 +385,11 @@ module storage 'br/public:avm/res/storage/storage-account:0.32.0' = {
   }
 }
 
-// =============================================================================
-// W-P1 — PE for the WE Foundry account (T-018)
-// =============================================================================
-//
+// PE for the WE Foundry account
+
 // AVM: br/public:avm/res/network/private-endpoint:0.12.1
 // groupIds: [ 'account' ]
-// DNS zones: services.ai + openai + cognitiveservices (W-Z1, W-Z2, W-Z3)
-// =============================================================================
+// DNS zones: services.ai + openai + cognitiveservices
 
 module peWeFoundry 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   name: 'we-pe-foundry'
@@ -451,9 +428,7 @@ module peWeFoundry 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   }
 }
 
-// =============================================================================
-// W-P2 / W-P3 / W-P4 — PEs for Cosmos / AI Search / Storage (T-019)
-// =============================================================================
+// PEs for Cosmos / AI Search / Storage
 
 module peCosmos 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   name: 'we-pe-cosmos'
@@ -542,15 +517,12 @@ module peStorage 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   }
 }
 
-// =============================================================================
-// W-P5 — Cross-region APIM inbound PE in the WE agent PE subnet (T-020)
-// =============================================================================
-//
+// Cross-region APIM inbound PE in the WE agent PE subnet
+
 // AVM: br/public:avm/res/network/private-endpoint:0.12.1
 // PE `location` is the agent region (westeurope or eastus2), DIFFERENT from
 // the APIM service's swedencentral. groupIds: [ 'Gateway' ].
-// DNS zone binds privatelink.azure-api.net (W-Z7).
-// =============================================================================
+// DNS zone binds privatelink.azure-api.net.
 
 module peApimGateway 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   name: 'we-pe-apim-gateway'
@@ -581,9 +553,7 @@ module peApimGateway 'br/public:avm/res/network/private-endpoint:0.12.1' = {
   }
 }
 
-// =============================================================================
 // Outputs — feed main.bicep and wiring.bicep
-// =============================================================================
 
 output agentVnetId string = vnet.outputs.resourceId
 output agentSubnetId string = agentSubnetId
@@ -598,8 +568,8 @@ output weFoundryProjectId string = weFoundryProject.id
 output weFoundryProjectName string = weFoundryProject.name
 // AI Foundry **project** endpoint — required by the Azure AI Projects SDK
 // (`AIProjectClient(endpoint=...)`). Format:
-//   https://<account-name>.services.ai.azure.com/api/projects/<project-name>
-//
+// https://<account-name>.services.ai.azure.com/api/projects/<project-name>
+
 // We deliberately construct this URL rather than re-using
 // `weFoundryAccountExisting.properties.endpoint`, because that property
 // returns the *account* endpoint (`https://<name>.cognitiveservices.azure.com/`)
@@ -612,7 +582,7 @@ output weFoundryProjectEndpoint string = 'https://${weFoundryAccountName}.servic
 // surfaced for diagnostics — not the value the AIProjectClient SDK expects.
 output weFoundryAccountEndpoint string = weFoundryAccountExisting.properties.endpoint
 
-@description('System-assigned managed identity principalId of the WE Foundry project (W-I2). The principal APIM\'s validate-azure-ad-token policy validates.')
+@description('System-assigned managed identity principalId of the WE Foundry project. The principal APIM\'s validate-azure-ad-token policy validates.')
 output agentProjectPrincipalId string = weFoundryProject.identity.principalId
 
 output cosmosAccountId string = cosmos.outputs.resourceId

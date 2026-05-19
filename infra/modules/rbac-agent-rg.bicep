@@ -1,23 +1,18 @@
-// =============================================================================
 // rbac-agent-rg.bicep — agent-RG-scoped control-plane role assignments.
-// =============================================================================
-//
+
 // Authors four control-plane role assignments for the WE Foundry project MI
-// against the BYO data-plane stack (T-030 / X-4 control plane in
-// data-model.md):
-//   1. DocumentDB Account Contributor (Cosmos control plane)
-//   2. Search Index Data Contributor (AI Search data)
-//   3. Search Service Contributor (AI Search admin)
-//   4. Storage Blob Data Contributor (Storage)
-//
+// against the BYO data-plane stack:
+// 1. DocumentDB Account Contributor (Cosmos control plane)
+// 2. Search Index Data Contributor (AI Search data)
+// 3. Search Service Contributor (AI Search admin)
+// 4. Storage Blob Data Contributor (Storage)
+
 // The Cosmos *data plane* SQL role assignment is in cosmos-sql-role-assignment.bicep
-// (separate native fallback per T-030a; AVM gap R-A1).
-//
-// AVM gap (R-A2): avm/res/authorization/role-assignment/rg-scope:0.1.1 does
+
+// AVM gap: avm/res/authorization/role-assignment/rg-scope:0.1.1 does
 // not expose the full {principalId, roleDefinitionIdOrName, resourceId} surface
 // on its `params` struct. Native fallback per the same justification recorded
 // in rbac-model-rg.bicep. Retire when AVM ships full resource-scope coverage.
-// =============================================================================
 
 targetScope = 'resourceGroup'
 
@@ -33,9 +28,7 @@ param weSearchServiceName string
 @description('WE Storage account name (existing, BYO data plane).')
 param weStorageAccountName string
 
-// =============================================================================
 // Built-in role definition IDs — control plane.
-// =============================================================================
 
 var roleDocumentDbAccountContributor   = '5bd9cd88-fe45-4216-938b-f97437e15450'
 var roleCosmosDbOperator               = '230815da-be43-4aae-9cb4-875f7bd000aa'
@@ -45,9 +38,7 @@ var roleStorageBlobDataContributor     = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var roleStorageBlobDataOwner           = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 var roleStorageAccountContributor      = '17d1049b-9a84-46fb-8f53-869881c3d3ab'
 
-// =============================================================================
 // Existing target resources.
-// =============================================================================
 
 resource cosmosExisting 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: weCosmosAccountName
@@ -61,9 +52,7 @@ resource storageExisting 'Microsoft.Storage/storageAccounts@2023-05-01' existing
   name: weStorageAccountName
 }
 
-// =============================================================================
 // Role assignments.
-// =============================================================================
 
 resource raCosmosControl 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: cosmosExisting

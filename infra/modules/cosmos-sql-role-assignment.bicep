@@ -1,21 +1,17 @@
-// =============================================================================
 // cosmos-sql-role-assignment.bicep — native Cosmos DB data-plane role assignment.
-// =============================================================================
-//
-// AVM gap (T-030a): document-db/database-account@0.19.0 exposes the account
+
+// AVM gap: document-db/database-account@0.19.0 exposes the account
 // itself but does not author `databaseAccounts/sqlRoleAssignments` children.
-// This module is the documented native fallback per research.md R-A1 and
-// data-model.md X-4 (Cosmos data-plane row).
-//
+// This module is the documented native fallback.
+
 // The Cosmos SQL role assignment lives under
-//   Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15
+// Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15
 // and uses Cosmos-specific role definitions (NOT the Microsoft.Authorization
 // roleAssignment type). The built-in Cosmos DB Data Contributor role definition
 // ID is the well-known GUID 00000000-0000-0000-0000-000000000002.
-//
+
 // Retire this module when AVM ships `sqlRoleAssignments[]` coverage on the
 // Cosmos account module (target: avm/res/document-db/database-account >= 0.20.x).
-// =============================================================================
 
 targetScope = 'resourceGroup'
 

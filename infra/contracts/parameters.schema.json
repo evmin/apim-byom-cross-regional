@@ -1,0 +1,177 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://example.invalid/infra/contracts/parameters.schema.json",
+ "title": "Private Foundry Agent IaC — Operator Parameter Contract",
+ "description": "JSON Schema describing the operator-facing parameter surface for the private Foundry Agent Service + cross-region APIM + Sweden Central model IaC. Every property maps either to an azd environment variable (preferred) or to a key in main.parameters.json that resolves to one. Defaults shown here are normative; main.bicep MUST enforce the same defaults and the same validation rules.",
+ "type": "object",
+ "additionalProperties": false,
+ "required": [
+ "azureSubscriptionId",
+ "azdEnvironmentName",
+ "modelDeployments"
+ ],
+ "properties": {
+ "azureSubscriptionId": {
+ "type": "string",
+ "format": "uuid",
+ "description": "Target Azure subscription ID. Bound to azd env var AZURE_SUBSCRIPTION_ID."
+ },
+ "azdEnvironmentName": {
+ "type": "string",
+ "minLength": 1,
+ "maxLength": 64,
+ "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+ "description": "azd environment name. Bound to AZURE_ENV_NAME. Drives naming of the two resource groups and downstream resources together with namePrefix."
+ },
+ "regionPair": {
+ "type": "string",
+ "enum": ["westeurope+swedencentral", "eastus2+swedencentral"],
+ "default": "westeurope+swedencentral",
+ "description": "Region pair: agent plane + model plane. Only the two values listed are accepted; any other value MUST be rejected at parameter validation time. Bound to REGION_PAIR."
+ },
+ "namePrefix": {
+ "type": "string",
+ "minLength": 2,
+ "maxLength": 12,
+ "pattern": "^[a-z][a-z0-9]+$",
+ "default": "mreg",
+ "description": "Lowercase short prefix used in resource names alongside CAF abbreviations. Bound to NAME_PREFIX. Defaults to `mreg` so a clean `azd up` works without setting the env var; override only to deploy parallel stacks in the same subscription."
+ },
+ "weVnetCidr": {
+ "type": "string",
+ "format": "ipv4-cidr",
+ "default": "10.40.0.0/20",
+ "description": "Agent VNet CIDR (West Europe or East US 2 per regionPair). RFC1918 required. Bound to WE_VNET_CIDR."
+ },
+ "agentSubnetCidr": {
+ "type": "string",
+ "format": "ipv4-cidr",
+ "default": "10.40.0.0/24",
+ "description": "Agent subnet CIDR (delegated to Microsoft.App/environments). RFC1918 required. Prefix length MUST be <= 27 (i.e., /24 recommended, /27 minimum); /28 and below MUST be rejected. Bound to AGENT_SUBNET_CIDR."
+ },
+ "agentPeSubnetCidr": {
+ "type": "string",
+ "format": "ipv4-cidr",
+ "default": "10.40.1.0/27",
+ "description": "Agent VNet's private-endpoint subnet CIDR; hosts all WE PE NICs incl. the cross-region APIM inbound PE. Bound to AGENT_PE_SUBNET_CIDR."
+ },
+ "scVnetCidr": {
+ "type": "string",
+ "format": "ipv4-cidr",
+ "default": "10.50.0.0/20",
+ "description": "Sweden Central VNet CIDR. RFC1918 required. MUST NOT overlap weVnetCidr. Bound to SC_VNET_CIDR."
+ },
+ "apimOutboundSubnetCidr": {
+ "type": "string",
+ "format": "ipv4-cidr",
+ "default": "10.50.0.0/27",
+ "description": "Subnet inside the SC VNet used for APIM Std v2 / Prem v2 outbound VNet integration; delegated as required by APIM v2. Bound to APIM_OUTBOUND_SUBNET_CIDR."
+ },
+ "scPeSubnetCidr": {
+ "type": "string",
+ "format": "ipv4-cidr",
+ "default": "10.50.1.0/27",
+ "description": "SC VNet's private-endpoint subnet CIDR; hosts the PE for the SC Foundry / AOAI model account. Bound to SC_PE_SUBNET_CIDR."
+ },
+ "apimSku": {
+ "type": "string",
+ "enum": ["StandardV2", "PremiumV2"],
+ "default": "StandardV2",
+ "description": "APIM SKU. Only Standard v2 and Premium v2 are supported (inbound private endpoint + v2 outbound VNet integration). Basic v2, Developer, Consumption, and classic v1 MUST be rejected at parameter validation. Bound to APIM_SKU."
+ },
+ "apimCapacity": {
+ "type": "integer",
+ "minimum": 1,
+ "maximum": 12,
+ "default": 1,
+ "description": "APIM capacity units. Bound to APIM_CAPACITY."
+ },
+ "modelDeployments": {
+ "type": "array",
+ "minItems": 1,
+ "description": "Model deployments to create on the SC Foundry / Azure OpenAI account. Bound to MODEL_DEPLOYMENTS (JSON-encoded array in the env var).",
+ "items": {
+ "type": "object",
+ "additionalProperties": false,
+ "required": ["name", "model", "version", "skuName", "skuCapacity"],
+ "properties": {
+ "name": {
+ "type": "string",
+ "minLength": 1,
+ "description": "Deployment name; this is what the agent references via <connection-name>/<deployment-name>."
+ },
+ "model": {
+ "type": "string",
+ "minLength": 1,
+ "description": "Model name (e.g., 'gpt-4o', 'gpt-4o-mini'). Latest first-party Azure OpenAI / Foundry models only."
+ },
+ "version": {
+ "type": "string",
+ "minLength": 1,
+ "description": "Model version string as published by Microsoft (e.g., '2024-11-20')."
+ },
+ "skuName": {
+ "type": "string",
+ "enum": ["Standard", "GlobalStandard", "DataZoneStandard"],
+ "description": "Deployment SKU family. Reachability is region-agnostic from APIM's perspective because the URL is account-bound."
+ },
+ "skuCapacity": {
+ "type": "integer",
+ "minimum": 1,
+ "description": "Deployment capacity units (TPM-equivalent or otherwise per Microsoft documentation)."
+ }
+ }
+ }
+ },
+ "urlPathStyle": {
+ "type": "string",
+ "enum": ["aoai", "openai"],
+ "default": "aoai",
+ "description": "URL-path style on the Foundry Azure API Management admin-connected model. 'aoai' => '/deployments/{name}/chat/completions' (default; matches a direct AOAI call). 'openai' => '/chat/completions'. Bound to URL_PATH_STYLE."
+ },
+ "enableSemanticCache": {
+ "type": "boolean",
+ "default": false,
+ "description": "When true, APIM's inbound policy stack includes `llm-semantic-cache-lookup` and the backend stack includes `llm-semantic-cache-store`. When false (default), neither is emitted into the deployed policy. Bound to ENABLE_SEMANTIC_CACHE."
+ },
+ "enableDynamicDiscovery": {
+ "type": "boolean",
+ "default": false,
+ "description": "When true, the Foundry Azure API Management connection uses dynamic model discovery (APIM serves /deployments or /models). When false (default), discovery is static (the connection lists the deployments). Bound to ENABLE_DYNAMIC_DISCOVERY."
+ },
+ "developerPortalExposure": {
+ "type": "string",
+ "enum": ["disabled", "privatePreviewOnly"],
+ "default": "disabled",
+ "description": "APIM developer-portal exposure. Default 'disabled' matches the lockdown posture of docs/001_architecture.md. 'privatePreviewOnly' is a documented but currently inert option (no public exposure ever)."
+ },
+ "existingPrivateDnsZoneIds": {
+ "type": "object",
+ "additionalProperties": false,
+ "description": "Optional BYO private DNS zone resource IDs. When a key is present, the solution will reuse that zone and create only VNet links / A-records into it; on azd down, the zone itself is never deleted. Keys are the canonical zone names; values are full Azure resource IDs.",
+ "properties": {
+ "privatelink.services.ai.azure.com": { "type": "string" },
+ "privatelink.openai.azure.com": { "type": "string" },
+ "privatelink.cognitiveservices.azure.com": { "type": "string" },
+ "privatelink.search.windows.net": { "type": "string" },
+ "privatelink.blob.core.windows.net": { "type": "string" },
+ "privatelink.documents.azure.com": { "type": "string" },
+ "privatelink.azure-api.net": { "type": "string" }
+ }
+ },
+ "logAnalyticsWorkspaceId": {
+ "type": "string",
+ "description": "Optional resource ID of a pre-existing Log Analytics workspace. When set, the solution wires diagnostic settings on APIM and the two Foundry / AOAI accounts (plus BYO data plane) to it. When unset, no diagnostic settings are created. Bound to LOG_ANALYTICS_WORKSPACE_ID."
+ },
+ "enableSmokeValidation": {
+ "type": "boolean",
+ "default": true,
+ "description": "Toggle for the postprovision smoke inference call. When false, the posture audit still runs but the inference call is skipped (for environments where outbound calls are not desired). Bound to ENABLE_SMOKE_VALIDATION."
+ }
+ },
+ "$defs": {
+ "validationNotes": {
+ "description": "Cross-property validation rules main.bicep MUST enforce (these are not expressible in vanilla JSON Schema and live in Bicep parameter validation instead):\n - The first half of regionPair MUST equal the location of all WE-plane resources, and 'swedencentral' MUST equal the location of all SC-plane resources.\n - weVnetCidr MUST contain agentSubnetCidr and agentPeSubnetCidr (no overflow, no overlap between the two child subnets).\n - scVnetCidr MUST contain apimOutboundSubnetCidr and scPeSubnetCidr (same).\n - weVnetCidr and scVnetCidr MUST NOT overlap.\n - agentSubnetCidr prefix length MUST be <= 27.\n - All CIDRs MUST be RFC1918.\n - modelDeployments MUST have at least one entry."
+ }
+ }
+}

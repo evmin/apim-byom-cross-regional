@@ -1,20 +1,17 @@
-// =============================================================================
 // apim-policy.bicep — APIM service-policy authoring (resource-group scope).
-// =============================================================================
-//
+
 // Split out of sc-model-plane.bicep to break the WE↔SC module cycle: the
 // inbound policy embeds the WE Foundry project MI's principalId (a we-agent-plane
 // output), and the policy is a child of the APIM service (a sc-model-plane
 // output). By authoring the policy in its own module dispatched from main.bicep
 // AFTER both planes complete, each plane stays independent of the other.
-//
-// Implements T-027: assembles the policy XML via loadTextContent() from the four
-// .xml fragments under ../policies/, in the order:
-//   inbound: validate-azure-ad-token -> (optional llm-semantic-cache-lookup)
-//            -> set-backend-service -> authentication-managed-identity
-//            -> set-header Authorization
-//   backend: (optional llm-semantic-cache-store) -> forward-request
-// =============================================================================
+
+// Implements: assembles the policy XML via loadTextContent from the four
+// .xml fragments under `../policies/`, in the order:
+// inbound: validate-azure-ad-token -> (optional llm-semantic-cache-lookup)
+// -> set-backend-service -> authentication-managed-identity
+// -> set-header Authorization
+// backend: (optional llm-semantic-cache-store) -> forward-request
 
 targetScope = 'resourceGroup'
 
@@ -46,10 +43,10 @@ resource apimExisting 'Microsoft.ApiManagement/service@2024-05-01' existing = {
 }
 
 // APIM named value carrying the apim-byom shared api-key. Stored with
-// `secret: true` so the value is not returned by listValue() and is masked
+// `secret: true` so the value is not returned by listValue and is masked
 // in the portal. The policy references it via the standard `{{name}}` token
 // which APIM resolves at policy execution time (NOT at Bicep deploy time —
-// our Bicep replace() chain does not touch `{{apim-byom-key}}`).
+// our Bicep replace chain does not touch `{{apim-byom-key}}`).
 resource apimByomKeyNamedValue 'Microsoft.ApiManagement/service/namedValues@2024-05-01' = {
   parent: apimExisting
   name: 'apim-byom-key'
@@ -60,7 +57,7 @@ resource apimByomKeyNamedValue 'Microsoft.ApiManagement/service/namedValues@2024
   }
 }
 
-// Fragment loaders — paths are relative to this .bicep file.
+// Fragment loaders — paths are relative to this.bicep file.
 var inboundFragmentRaw = loadTextContent('../policies/inbound.xml')
 var backendFragmentRaw = loadTextContent('../policies/backend.xml')
 var inboundCacheFragmentRaw = loadTextContent('../policies/inbound-cache.xml')

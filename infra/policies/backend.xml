@@ -1,14 +1,14 @@
 <!--
   APIM backend policy stack — always-on element.
 
-  Composed at deploy time by infra/modules/sc-model-plane.bicep (T-027):
+  Composed at deploy time by infra/modules/sc-model-plane.bicep:
     - authentication-managed-identity (acquires an AAD token using APIM's
       system-assigned MI; the token authenticates the backend hop to the
       SC Foundry / AOAI account)
     - (optional) llm-semantic-cache-store — inserted from backend-cache.xml when
       enableSemanticCache = true; intentionally NOT present in this file
 
-  Placeholder tokens replaced via Bicep `replace()` in T-027:
+  Placeholder tokens replaced via Bicep `replace()` in :
     {{BACKEND_AUDIENCE}}     -> 'https://cognitiveservices.azure.com'   (no trailing slash;
                                 this is the resource URI APIM's MI requests a token for)
 
