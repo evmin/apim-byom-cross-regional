@@ -4,6 +4,8 @@ This repo deploys a private Azure Foundry agent that calls Sweden Central models
 
 This page is the two-minute introduction. For the full technical narrative read [`docs/001_architecture.md`](./docs/001_architecture.md). For decisions and rationale read the ADRs in [`docs/madr/`](./docs/madr/).
 
+> **Note on the reference deployment.** This repo deploys to **Switzerland North** (agent) + Sweden Central (model). The architecture is region-agnostic — EUS2 and WE are the customer-targeted landing zones. Switzerland North is the demo default because it has reliable APIM Std v2 + Foundry capacity at stand-up time, while EUS2 and WE are routinely quota-constrained. Switching is one parameter: `azd env set REGION_PAIR westeurope+swedencentral`.
+
 ## The problem
 
 You want to run a Foundry agent privately, on the newest Azure OpenAI models. Two facts pull in opposite directions:
