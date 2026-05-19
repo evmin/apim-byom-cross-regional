@@ -43,3 +43,4 @@ Use **Bicep + AZD + AVM**.
 - Azure Verified Modules: https://aka.ms/avm
 - Azure Developer CLI: https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/
 - `azure.yaml`, `infra/main.bicep` — the entry points.
+- `../004_research.md` — AVM coverage analysis, native-fallback rationales, and pin table for the IaC.
