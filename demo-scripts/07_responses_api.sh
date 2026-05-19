@@ -50,20 +50,64 @@ from azure.identity import ManagedIdentityCredential
 from azure.ai.projects import AIProjectClient
 
 cred = ManagedIdentityCredential(client_id=client_id) if client_id else ManagedIdentityCredential()
-
-print(f"[remote] creating AIProjectClient(endpoint={endpoint})...")
 project = AIProjectClient(endpoint=endpoint, credential=cred)
 
-# --- Test 1: Pattern A — Raw Responses API with conn/dep model string ---
-# This is the simplest v2 pattern from foundry-cross-resource skill §7.1
-print(f"\n[remote] TEST 1 (Pattern A): oai.responses.create(model='{model_ref}')")
+# Check SDK version
+import azure.ai.projects as aip
+print(f"[remote] azure-ai-projects version: {aip.__version__}")
+
+# --- Test 1: v2 prompt agent via PromptAgentDefinition + Responses API ---
+# Per MS Learn: agents.create_version() + PromptAgentDefinition, then
+# responses.create() with extra_body={"agent_reference": ...}
+print(f"\n[remote] TEST 1: v2 prompt agent (PromptAgentDefinition + Responses API)")
+agent = None
+try:
+    from azure.ai.projects.models import PromptAgentDefinition
+
+    agent = project.agents.create_version(
+        agent_name="v2-byom-probe",
+        definition=PromptAgentDefinition(
+            model=model_ref,
+            instructions="You only ever reply with the word PONG.",
+        ),
+    )
+    print(f"[remote]   agent created: name={agent.name} version={getattr(agent, 'version', '?')}")
+
+    oai = project.get_openai_client()
+    conv = oai.conversations.create()
+    print(f"[remote]   conversation: {conv.id}")
+
+    t0 = time.monotonic()
+    resp = oai.responses.create(
+        input="Say it.",
+        conversation=conv.id,
+        extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
+    )
+    elapsed = (time.monotonic() - t0) * 1000
+    text = resp.output_text if hasattr(resp, "output_text") else str(resp)
+    print(f"[remote]   PASS in {elapsed:.0f}ms — output: {text!r}")
+
+except ImportError as ie:
+    print(f"[remote]   SKIP — PromptAgentDefinition not available: {ie}")
+    print(f"[remote]   (SDK may need upgrade: pip install -U azure-ai-projects)")
+except Exception as exc:
+    elapsed = (time.monotonic() - t0) * 1000 if 't0' in dir() else 0
+    print(f"[remote]   FAIL — {exc}")
+finally:
+    if agent:
+        try:
+            project.agents.delete_version(agent_name=agent.name, version=agent.version)
+        except Exception:
+            pass
+
+# --- Test 2: Raw Responses API with conn/dep model string (Pattern A) ---
+print(f"\n[remote] TEST 2: Raw responses.create(model='{model_ref}')")
 oai = project.get_openai_client()
-print(f"[remote]   base_url: {oai.base_url}")
 try:
     t0 = time.monotonic()
     resp = oai.responses.create(
         model=model_ref,
-        input="Reply with the single word PONG.",
+        input="Reply PONG.",
         max_output_tokens=32,
     )
     elapsed = (time.monotonic() - t0) * 1000
@@ -72,47 +116,6 @@ try:
 except Exception as exc:
     elapsed = (time.monotonic() - t0) * 1000
     print(f"[remote]   FAIL in {elapsed:.0f}ms — {exc}")
-
-# --- Test 2: Pattern C — Refreshed-preview hosted-agent client ---
-# Uses get_openai_client(agent_name=...) to bind to the existing prompt agent
-# created by Stage 3 (demo-cross-region-agent). This is the v2 way to invoke
-# a prompt agent via the Responses API.
-agent_name = "demo-cross-region-agent"
-print(f"\n[remote] TEST 2 (Pattern C): get_openai_client(agent_name='{agent_name}')")
-try:
-    project2 = AIProjectClient(endpoint=endpoint, credential=cred, allow_preview=True)
-    oai2 = project2.get_openai_client(agent_name=agent_name)
-    print(f"[remote]   base_url: {oai2.base_url}")
-    t0 = time.monotonic()
-    resp2 = oai2.responses.create(
-        input="What is 2+2? Reply with the number only.",
-        max_output_tokens=32,
-    )
-    elapsed = (time.monotonic() - t0) * 1000
-    text = resp2.output_text if hasattr(resp2, "output_text") else str(resp2)
-    print(f"[remote]   PASS in {elapsed:.0f}ms — output: {text!r}")
-except Exception as exc:
-    elapsed = (time.monotonic() - t0) * 1000
-    print(f"[remote]   FAIL in {elapsed:.0f}ms — {exc}")
-
-# --- Test 3: Negative — chat.completions with conn/dep (expected 404) ---
-print(f"\n[remote] TEST 3 (Negative): chat.completions.create(model='{model_ref}') [expected 404]")
-try:
-    t0 = time.monotonic()
-    resp3 = oai.chat.completions.create(
-        model=model_ref,
-        messages=[{"role": "user", "content": "Reply OK"}],
-        max_tokens=16,
-    )
-    elapsed = (time.monotonic() - t0) * 1000
-    content = resp3.choices[0].message.content if resp3.choices else "(empty)"
-    print(f"[remote]   UNEXPECTED 200 in {elapsed:.0f}ms — reply={content!r}")
-except Exception as exc:
-    elapsed = (time.monotonic() - t0) * 1000
-    if "404" in str(exc) or "NotFound" in str(exc) or "DeploymentNotFound" in str(exc):
-        print(f"[remote]   EXPECTED 404 — chat.completions does not route conn/dep")
-    else:
-        print(f"[remote]   FAIL in {elapsed:.0f}ms — {exc}")
 
 print("\n[remote] done")
 PYEOF
