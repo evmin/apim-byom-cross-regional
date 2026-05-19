@@ -18,13 +18,13 @@ That means:
 - **Site-to-Site VPN / ExpressRoute.** Heavy, requires customer-side network gear or ER circuit. Not justified for a demo / validation surface.
 - **Point-to-Site VPN / Azure VPN Gateway.** Per-operator setup overhead; ongoing client config drift. Rejected.
 - **Self-hosted runner inside the VNet.** Solves CI but not interactive validation; still needs Bastion-style access for SSH.
-- **Demo jumpbox (small Linux VM) + Azure Bastion (Standard with tunneling) + UAMI.** No public IP on the VM; Bastion-tunnel + `az network bastion tunnel` opens an ephemeral `localhost:<port>` → port-22 forward; operator `ssh` over that.
+- **Demo jumpbox (small Linux VM) + Azure Bastion (Standard with tunneling) + UAMI.** Outbound-only Standard public IP on the NIC (NSG denies all inbound except the VirtualNetwork source); Bastion-tunnel + `az network bastion tunnel` opens an ephemeral `localhost:<port>` → port-22 forward; operator `ssh` over that.
 
 ## Decision Outcome
 
 Provision a small Ubuntu jumpbox VM in the agent VNet (`infra/modules/demo-jumpbox.bicep`):
 
-- **No public IP** on the NIC. NSG blocks all inbound except the VNet (Bastion subnet).
+- **Standard public IP on the NIC, outbound only.** NSG denies all inbound except the VirtualNetwork source (Bastion subnet). The PIP exists because Microsoft retired default outbound access on new Azure VMs in Sept 2025 — see [`MADR-0009`](./0009-jumpbox-outbound-egress-via-nic-pip.md).
 - **User-assigned managed identity** with `Azure AI Developer` on the agent project, `Cognitive Services User` on the SC AOAI account, and its `oid` in the APIM policy allowlist.
 - **Azure Bastion** (Standard SKU, tunneling enabled) co-located in the agent VNet.
 - Cloud-init writes a fixed set of smoke scripts under `/opt/mreg-validate/` and a Python venv with `azure-ai-projects`, `azure-identity`, `openai`, `httpx`.
@@ -37,11 +37,12 @@ The Bastion is also used for browser access to the Foundry portal via SOCKS-over
 
 - Every validation and demo step is reproducible from the operator's laptop with only `az login` + an SSH private key. No customer network gear or VPN client.
 - Bastion + small VM is the dominant non-prod cost line item after APIM. Both can be deleted when the env is idle; redeployment is idempotent.
-- Default outbound access on new Azure VMs was retired Sept 2025. Currently mitigated by a temporary public IP attached to the NIC (NSG still blocks inbound). Future follow-up: add a NAT Gateway in `demo-jumpbox.bicep`.
+- Jumpbox outbound egress runs through a single Standard PIP on the NIC. See [`MADR-0009`](./0009-jumpbox-outbound-egress-via-nic-pip.md) for the rationale and the brown-field rollout caveat.
 
 ## References
 
 - `infra/modules/demo-jumpbox.bicep` — VM, NIC, NSG, UAMI, cloud-init.
 - `scripts/jumpbox-run.sh`, `scripts/jumpbox-smoke.sh` — operator entry points.
 - `../003_portal_tunnel.md` — SOCKS tunnel for the Foundry portal.
+- [`MADR-0009`](./0009-jumpbox-outbound-egress-via-nic-pip.md) — jumpbox outbound egress via NIC public IP.
 - Default outbound access retirement: https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/default-outbound-access

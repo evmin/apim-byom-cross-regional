@@ -15,7 +15,13 @@
 //     /opt/mreg-validate/ and runs bootstrap.sh on first boot.
 //
 // Cross-cutting:
-//   - The VM has NO public IP (only Bastion does).
+//   - The VM has a Standard-SKU public IP attached to its NIC for OUTBOUND
+//     ONLY. Default outbound access for new Azure VMs was retired Sept 2025,
+//     so without an explicit egress mechanism the VM can't reach Azure
+//     control-plane endpoints (e.g. `management.azure.com` for Resource
+//     Graph). Inbound public surface is still zero: the NIC NSG below blocks
+//     every inbound packet except VirtualNetwork → port 22 (which only the
+//     Bastion subnet uses). For the bigger story see ADR-0008.
 //   - The NSG is attached to the *NIC* (not the subnet) — keeps this module
 //     fully self-contained and avoids touching the subnet object that the
 //     AVM virtual-network module owns in we-agent-plane.bicep.
@@ -320,6 +326,12 @@ module vm 'br/public:avm/res/compute/virtual-machine:0.22.1' = {
             name: 'ipconfig1'
             subnetResourceId: jumpboxSubnetId
             privateIPAllocationMethod: 'Dynamic'
+            pipConfiguration: {
+              publicIpNameSuffix: '-pip'
+              publicIPAllocationMethod: 'Static'
+              skuName: 'Standard'
+              skuTier: 'Regional'
+            }
           }
         ]
       }

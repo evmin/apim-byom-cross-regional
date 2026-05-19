@@ -238,6 +238,7 @@ Operator-owned inputs (BYO private DNS zones, BYO Log Analytics workspace) are n
 | `03_responses_api.sh` test 1 returns `Connection 'apim-byom' not found` | The Foundry connection target is missing the `/openai` suffix or `authType` is not `ApiKey`. Check `infra/modules/foundry-connection.bicep`. |
 | `03_responses_api.sh` test 2 returns `401` from APIM | The jumpbox UAMI's oid is not in the APIM allow-list. Inspect `azd env get-value jumpboxUamiPrincipalId` and re-deploy. |
 | `jumpbox-smoke.sh` step `smoke-dns` returns a public IP | The agent VNet is not linked to one of the `privatelink.*` zones. Re-deploy. |
+| `jumpbox-smoke.sh` step `posture-from-vnet` returns `Network is unreachable` to `management.azure.com` | The jumpbox NIC has no public IP. The Bicep models it ([`MADR-0009`](./madr/0009-jumpbox-outbound-egress-via-nic-pip.md)) but cannot apply to an existing VM because `osProfile.customData` is immutable. Fix: `az network public-ip create -g <agentRg> -n <vmName>-nic-ipconfig1-pip --sku Standard --allocation-method Static` then `az network nic ip-config update -g <agentRg> --nic-name <vmName>-nic -n ipconfig1 --public-ip-address <vmName>-nic-ipconfig1-pip`. |
 | Network-posture audit shows a resource with `publicNetworkAccess=Enabled` | A postprovision hook didn't run. Re-run `azd provision`. |
 | `azd down` complains about role assignments on deleted scopes | Eventual-consistency lag. Re-run `azd down`. |
 
@@ -258,7 +259,7 @@ Operator-owned inputs (BYO private DNS zones, BYO Log Analytics workspace) are n
 
 - Deploy any agent code, skills, prompts, or orchestration logic.
 - Load any documents, indexes, or blobs into Cosmos / AI Search / Storage.
-- Provision an Azure Firewall, NAT Gateway, or any egress-control resource (operator BYO).
+- Provision an Azure Firewall, NAT Gateway, or any fleet-scale egress-control resource (operator BYO). The jumpbox NIC carries a single Standard public IP for outbound only — sized for a one-VM demo, not a production fleet (see [`MADR-0009`](./madr/0009-jumpbox-outbound-egress-via-nic-pip.md)).
 - Provision a Log Analytics workspace (optionally consumes an existing one).
 - Register Azure resource providers — that is a one-time, per-subscription operator step.
 

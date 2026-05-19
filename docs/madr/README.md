@@ -14,6 +14,7 @@ This folder collects the architecture decisions for this project in [MADR](https
 | [0006](./0006-v2-responses-api-canonical-agent-path.md) | v2 PromptAgent + Responses API as the canonical agent path | accepted |
 | [0007](./0007-bicep-azd-avm-iac-stack.md) | IaC stack: Bicep + Azure Developer CLI + Azure Verified Modules | accepted |
 | [0008](./0008-jumpbox-bastion-validation-surface.md) | Jumpbox + Bastion as the validation surface | accepted |
+| [0009](./0009-jumpbox-outbound-egress-via-nic-pip.md) | Jumpbox outbound egress via a NIC public IP (demo posture) | accepted |
 
 ## Adding a new ADR
 
